@@ -8,7 +8,7 @@ Can a generator create SVGs whose *chosen visible geometry* carries a keyed prov
 
 The attacker may read and minify the SVG and may perturb or redraw contours. The private key and manifest are outside the attacker model. The initial goal is robustness to syntax changes and bounded coordinate rounding. It does **not** promise survival of unrestricted quality-preserving redrawing, rasterization/revectorization, or disclosure of the candidate sets.
 
-## Sampler
+## Candidate-assisted sampler
 
 Let (K) be a 256-bit key and (F(c)) a geometric fingerprint formed from uniformly spaced arc-length samples of a contour. Domain-separated HMAC produces (u_{t,i}=\operatorname{PRF}_K(\text{asset-id},t,F(c_{t,i}))\in(0,1)). The generator chooses
 
@@ -28,9 +28,30 @@ The verifier authenticates the private manifest, parses the released SVG, sample
 p_{\text{null}}=\prod_{t=1}^{T}q_{t,J_t}.
 \]
 
-This exact probability assumes that an unmarked generator would independently sample from the recorded categorical distributions along the observed trajectory, that candidate sets were fixed without knowledge of the current keyed draw, and that geometry matching has negligible ambiguity. Nine equiprobable binary decisions give (2^{-9}\approx0.00195). This measures consistency with a specific key and manifest, not authorship, legal ownership, or whether a particular model wrote the SVG.
+For partial edits, the implementation counts the number (M) of recognized keyed choices and reports the Poisson-binomial upper tail (\Pr[\sum_t B_t\ge M]), where (B_t\sim\operatorname{Bernoulli}(q_{t,J_t})). This exact null calculation assumes that an unmarked generator would independently sample from the recorded categorical distributions along the observed trajectory, candidate sets were fixed without knowledge of the current keyed draw, and matching has negligible ambiguity. Nine equiprobable binary decisions give (2^{-9}\approx0.00195) when all match. The statistic measures consistency with a specific key and manifest, not authorship, legal ownership, or which model drew the SVG.
 
 The private manifest is authenticated with HMAC, but the current prototype has no independent timestamp or public commitment. A key holder could fabricate a manifest after seeing an SVG. A provenance deployment needs an append-only external commitment of the manifest hash, a trusted signing service, or an equivalent precommitment protocol.
+
+## Manifest-free geometric sampler
+
+For equal-probability alternatives, a second mode quantizes each candidate contour's arc-length centroid into a geometric symbol (z=Q_\Delta(C)). The generator rejects candidates near quantization boundaries and requires distinct symbols. It chooses the candidate with the largest keyed pseudorandom value (U_K(\text{asset-id},z)). Under a random key, each candidate wins with probability (1/m), preserving the generator's categorical distribution. The SVG contains the selected contour, not a hidden annotation.
+
+The verifier needs only the SVG, key, and a **precommitted** asset ID. It recomputes each distinct visible contour symbol and value (U_i), then calculates (S=\sum_i-\log U_i). For unmarked geometry fixed independently of the key, the PRF idealization gives independent uniforms and (S\sim\mathrm{Gamma}(n,1)). The lower-tail (p=F_{\mathrm{Gamma}(n,1)}(S)) detects an excess of high keyed values. With two equal-weight alternatives, a marked choice has (U=\max(U_1,U_2)), so (E[-\log U]=1/2) instead of 1. Detection power grows with the number of independent contours and falls under path deletion.
+
+The quantized centroid is a first prototype, not a proven robust invariant. It survives tested syntax rewrites and modest rounding, but an attacker can shift contours across quantization cells. Key or asset-ID search after observing an SVG can fabricate statistical evidence; both must be committed before generation for a provenance claim. Distinct symbols are required for the Gamma calibration.
+
+### Exact idealized power and the coverage limit
+
+For (m) equal-weight alternatives at each of (n) independent steps, the selected value is the maximum of (m) independent uniforms. Thus (U\sim\mathrm{Beta}(m,1)) and (-\log U\sim\mathrm{Exp}(m)). The marked statistic has (S\sim\mathrm{Gamma}(n,\text{rate}=m)), while the unmarked statistic has rate (1). At false-positive threshold (\alpha), idealized detection power is
+
+\[
+\Pr_{H_1}\!\left[S\le F^{-1}_{\mathrm{Gamma}(n,1)}(\alpha)\right]
+=F_{\mathrm{Gamma}(n,m)}\!\left(F^{-1}_{\mathrm{Gamma}(n,1)}(\alpha)\right).
+\]
+
+At (\alpha=10^{-3}) with two alternatives, this is approximately 0.220, 0.696, and 0.990 for 16, 32, and 64 independent usable contours. These are power calculations under the model, not measured generator results. They explain why a 32-contour watermarked asset can legitimately fail detection. They also omit candidate rejection, dependence, geometric edits, and selection bias from using a public test key.
+
+A universal watermark for **every** SVG cannot satisfy a nonzero payload and strict visual equivalence. Let (\mathcal A_\epsilon(x)) be the set of SVG renderings admissible under the fidelity policy for an asset (x). Any choice-based embedded signal has at most (\log_2|\mathcal A_\epsilon(x)|) bits of choice capacity. If an SVG has a unique admissible rendering, this bound is zero. Text, embedded images, filters, and rigid shapes may offer generator-specific choices, but this implementation has no verified encoder or detector for them. An honest system must measure usable capacity and decline to claim a mark where there is none; path-only evidence cannot authenticate a mixed-content drawing as a whole.
 
 ## Prior work and relationship
 
@@ -54,4 +75,16 @@ The combination proposed here is *keyed, distribution-preserving choice among co
 
 ## Current evidence
 
-Unit tests cover keyed selection, a 9-step toy generator, negative controls, a distribution-preservation Monte Carlo check, and Scour optimization. These validate implementation properties, not the broad robustness or visual-quality claims above. No model training is required by this method.
+As of 30 September 2026, 32 unit tests cover both inference-time samplers, a 9-step and 32-step toy generator, negative controls, wrong-key probes, categorical distribution preservation, Scour/SVGO optimization, path reordering/merging, bounded independent translation, rendering-indirection rejection, and partial path deletion. No model training is required.
+
+Three completed local `qwen3.5:4b` generations (radial flower, parallel-wave, and leaf layouts) each produced 16 pairs of cubic-contour proposals and accepted one keyed alternative at every step before SVG assembly. All 16 released contours in each asset match the keyed winners, giving the conditional null probability (2^{-16}=1.5259\times10^{-5}). All three retain all 16 matches after Scour, SVGO, two-decimal path rounding, path reorder, a one-unit global translation, and alternating half-unit path translations. Deleting four of 16 paths leaves 12 matches and fails the configured detector threshold ((p=0.0384)). The generator needed proposal retries because the validity and geometric-separation gate rejected some outputs. Files and machine-readable reports are under `experiments/results/`.
+
+On all three assets, an XML-comment baseline survives Scour but is removed by default SVGO. A 64-chip numeric coordinate-LSB baseline fails after two-decimal path rounding on every asset and additionally fails after Scour on the wave and leaf assets. ContourMark assisted mode remains detected in all four benign variants. This is a direct same-asset comparison, but three assets cannot establish superiority.
+
+An adaptive, keyless shape attack moves the two cubic control points of every contour in opposite directions while retaining endpoints. On the flower and leaf assets, a 0.75-unit control displacement reduces matches to 13 and defeats detection; sampled-geometry RMS is 0.0469% and 0.0491% of the canvas diagonal, while 512-pixel librsvg renders have normalized pixel MAE 0.409% and 0.446%. On the wave asset, 0.75 units remains detected, while 1.0 unit reduces matches to five; geometry RMS is 0.0613%, pixel MAE is 1.61%, and 7.57% of pixels change. These metrics do not establish perceptual equivalence, but they show a low-amplitude removal boundary and contradict a claim of strong adaptive robustness.
+
+The manifest-free centroid prototype has contrary evidence: a marked 32-contour fixture with a fixed public test key produced (p=0.0558), so it was not detected, and translations of 0.5 to 2 canvas units did not restore the signal. This agrees with its idealized power calculation and shows that 32 binary choices are insufficient for reliable detection at stringent false-positive rates. It should not be presented as the primary robust method without a stronger invariant and at least 64 usable choices.
+
+The provider-neutral categorical-token sampler has a 4,000-key Monte Carlo test against a 10/30/60 distribution and a source-level OmniSVG 1.1 coordinate-token policy. This is not an OmniSVG execution result; see `docs/model-adapters.md`.
+
+These experiments validate implementation properties and expose failures. They do not yet establish model-wide visual-quality parity, diverse-asset robustness, novelty, or superiority.

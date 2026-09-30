@@ -8,3 +8,4 @@ dist/
 node_modules/
 *.key
 *.wm.json
+experiments/results/probe.*

@@ -1,0 +1,275 @@
+{
+  "model": "qwen3.5:4b",
+  "motif": "flower",
+  "mode": "assisted",
+  "asset_id": "qwen-flower-16-v2",
+  "steps": 16,
+  "seed": 20260930,
+  "status": "completed",
+  "elapsed_seconds": 98.9448131249992,
+  "svg_sha256": "4d1519b476bb8d0fcef2709e072f765a27c9470969f8cab270991804ecc58b1a",
+  "records": [
+    {
+      "step": 0,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidates must have distinct geometry"
+    },
+    {
+      "step": 0,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,115 180,135 208,128",
+        "M128,128 C145,135 180,115 208,128"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2378625916,
+      "total_duration": 3480604625
+    },
+    {
+      "step": 1,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,135 178,125 202,159",
+        "M128,128 C145,135 186,135 202,159"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2392867877,
+      "total_duration": 3450430458
+    },
+    {
+      "step": 2,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate geometries are too close for reliable verification"
+    },
+    {
+      "step": 2,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C142,138 182,142 185,185",
+        "M128,128 C150,150 190,155 185,185"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2405474999,
+      "total_duration": 3740245584
+    },
+    {
+      "step": 3,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,135 180,165 159,202",
+        "M128,128 C145,135 176,172 159,202"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2390843167,
+      "total_duration": 3731554209
+    },
+    {
+      "step": 4,
+      "attempt": 0,
+      "accepted": false,
+      "error": "s is not in interval [0, curve.length()]."
+    },
+    {
+      "step": 4,
+      "attempt": 1,
+      "accepted": false,
+      "error": "s is not in interval [0, curve.length()]."
+    },
+    {
+      "step": 4,
+      "attempt": 2,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C145,145 160,180 128,208",
+        "M128,128 C148,150 172,190 128,208"
+      ],
+      "eval_count": 57,
+      "eval_duration": 3041331626,
+      "total_duration": 4481264125
+    },
+    {
+      "step": 5,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C135,142 155,165 97,202",
+        "M128,128 C142,148 165,175 97,202"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2410710166,
+      "total_duration": 3746782250
+    },
+    {
+      "step": 6,
+      "attempt": 0,
+      "accepted": false,
+      "error": "s is not in interval [0, curve.length()]."
+    },
+    {
+      "step": 6,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C145,135 160,170 71,185",
+        "M128,128 C148,140 165,175 71,185"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2430312085,
+      "total_duration": 3868162375
+    },
+    {
+      "step": 7,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,145 160,180 54,159",
+        "M128,128 C140,142 158,178 54,159"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2393236834,
+      "total_duration": 3751857541
+    },
+    {
+      "step": 8,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C148,142 155,168 48,128",
+        "M128,128 C142,155 152,172 48,128"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2384081541,
+      "total_duration": 3710770792
+    },
+    {
+      "step": 9,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,135 160,170 54,97",
+        "M128,128 C142,138 158,172 54,97"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2395013964,
+      "total_duration": 3756387666
+    },
+    {
+      "step": 10,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C145,155 162,195 71,71",
+        "M128,128 C142,150 158,190 71,71"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2437754168,
+      "total_duration": 3769419167
+    },
+    {
+      "step": 11,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate geometries differ by more than 3% of the canvas diagonal"
+    },
+    {
+      "step": 11,
+      "attempt": 1,
+      "accepted": false,
+      "error": "s is not in interval [0, curve.length()]."
+    },
+    {
+      "step": 11,
+      "attempt": 2,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C148,155 158,185 97,54",
+        "M128,128 C145,158 160,190 97,54"
+      ],
+      "eval_count": 57,
+      "eval_duration": 3214112792,
+      "total_duration": 4694207542
+    },
+    {
+      "step": 12,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C142,138 158,172 128,48",
+        "M128,128 C148,142 162,178 128,48"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2384130207,
+      "total_duration": 3716275417
+    },
+    {
+      "step": 13,
+      "attempt": 0,
+      "accepted": false,
+      "error": "s is not in interval [0, curve.length()]."
+    },
+    {
+      "step": 13,
+      "attempt": 1,
+      "accepted": false,
+      "error": "s is not in interval [0, curve.length()]."
+    },
+    {
+      "step": 13,
+      "attempt": 2,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,155 160,190 159,54",
+        "M128,128 C142,152 155,185 159,54"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2378658957,
+      "total_duration": 3784123125
+    },
+    {
+      "step": 14,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C142,152 160,190 185,71",
+        "M128,128 C150,158 170,195 185,71"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2375277415,
+      "total_duration": 3706502125
+    },
+    {
+      "step": 15,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,145 160,180 202,97",
+        "M128,128 C150,148 165,185 202,97"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2374445040,
+      "total_duration": 3706054666
+    }
+  ]
+}

@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 
 from .core import Parameters, WatermarkError, embed, generate_key, read_key, verify
+from .blind import BlindGenerationSession, detect_blind
+from .capacity import assess_svg
 from .inference import Candidate, GenerationSession, verify_generation
 
 
@@ -50,6 +52,17 @@ def _parser() -> argparse.ArgumentParser:
     check_sample.add_argument("candidate", type=Path)
     check_sample.add_argument("--key", type=Path, required=True)
     check_sample.add_argument("--manifest", type=Path, required=True)
+    blind_sample = commands.add_parser("sample-blind", help="generate with keyed geometry choices and no private manifest")
+    blind_sample.add_argument("proposals", type=Path)
+    blind_sample.add_argument("output", type=Path)
+    blind_sample.add_argument("--key", type=Path, required=True)
+    blind_sample.add_argument("--asset-id", required=True)
+    blind_check = commands.add_parser("detect-blind", help="detect a geometric mark without original or candidate manifest")
+    blind_check.add_argument("candidate", type=Path)
+    blind_check.add_argument("--key", type=Path, required=True)
+    blind_check.add_argument("--asset-id", required=True)
+    assess = commands.add_parser("assess", help="report fail-closed watermark coverage for an SVG")
+    assess.add_argument("svg", type=Path)
     return parser
 
 
@@ -64,7 +77,28 @@ def main(argv: list[str] | None = None) -> int:
                 stream.write(generate_key().hex() + "\n")
             print(f"Created {args.output} (mode 0600)")
             return 0
+        if args.command == "assess":
+            result = assess_svg(args.svg.read_bytes())
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0 if result["whole_document_supported"] else 1
         key = read_key(args.key)
+        if args.command == "sample-blind":
+            if args.output.exists():
+                raise WatermarkError(f"refusing to overwrite {args.output}")
+            proposals = json.loads(args.proposals.read_text())
+            session = BlindGenerationSession(key, proposals["viewBox"], args.asset_id)
+            for step in proposals["steps"]:
+                weights = [item.get("weight", 1.0) for item in step["candidates"]]
+                if len(set(weights)) != 1:
+                    raise WatermarkError("blind sampling currently requires equal candidate weights")
+                session.add_step([item["d"] for item in step["candidates"]], step.get("attributes", {}))
+            args.output.write_bytes(session.finish())
+            print(json.dumps({"output": str(args.output), "steps": len(session.emitted), "asset_id": args.asset_id}))
+            return 0
+        if args.command == "detect-blind":
+            result = detect_blind(args.candidate.read_bytes(), key, args.asset_id)
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0 if result["detected"] else 1
         if args.command == "sample-stream":
             for path in (args.output, args.manifest):
                 if path.exists():

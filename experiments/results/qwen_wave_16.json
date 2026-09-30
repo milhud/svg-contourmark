@@ -1,0 +1,239 @@
+{
+  "model": "qwen3.5:4b",
+  "motif": "wave",
+  "mode": "assisted",
+  "asset_id": "qwen-wave-16-v2",
+  "steps": 16,
+  "seed": 20261002,
+  "status": "completed",
+  "elapsed_seconds": 71.18852845800029,
+  "svg_sha256": "808b36804098d575c039821a97ddd54830c3ffa2f9ac1ffb3004b3a7d808db91",
+  "records": [
+    {
+      "step": 0,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M16,18 C24,32 216,32 240,18",
+        "M16,18 C24,48 216,48 240,18"
+      ],
+      "eval_count": 51,
+      "eval_duration": 2715721834,
+      "total_duration": 3665703583
+    },
+    {
+      "step": 1,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidates must have distinct geometry"
+    },
+    {
+      "step": 1,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M16,33 C24,50 216,50 240,33",
+        "M16,33 C18,38 222,38 240,33"
+      ],
+      "eval_count": 47,
+      "eval_duration": 2511568667,
+      "total_duration": 3599197167
+    },
+    {
+      "step": 2,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M16,47 C16,47 80,200 240,47",
+        "M16,47 C16,47 95,215 240,47"
+      ],
+      "eval_count": 33,
+      "eval_duration": 1745733288,
+      "total_duration": 3006285166
+    },
+    {
+      "step": 3,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M16,62 C24,68 216,68 240,62",
+        "M16,62 C24,70 216,70 240,62"
+      ],
+      "eval_count": 39,
+      "eval_duration": 2162115293,
+      "total_duration": 3432469000
+    },
+    {
+      "step": 4,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M16,77 C24,100 216,100 240,77",
+        "M16,77 C28,110 212,110 240,77"
+      ],
+      "eval_count": 43,
+      "eval_duration": 2289658372,
+      "total_duration": 3464102583
+    },
+    {
+      "step": 5,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M16,91 C16,91 16,145 240,91",
+        "M16,91 C16,91 16,125 240,91"
+      ],
+      "eval_count": 33,
+      "eval_duration": 1741814871,
+      "total_duration": 2974730250
+    },
+    {
+      "step": 6,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M16,106 C24,94 216,94 240,106",
+        "M16,106 C28,100 212,100 240,106"
+      ],
+      "eval_count": 41,
+      "eval_duration": 2174156457,
+      "total_duration": 3366559708
+    },
+    {
+      "step": 7,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidates must have distinct geometry"
+    },
+    {
+      "step": 7,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M16,121 C24,94 216,94 240,121",
+        "M16,121 C24,86 216,86 240,121"
+      ],
+      "eval_count": 51,
+      "eval_duration": 2822525455,
+      "total_duration": 4203046833
+    },
+    {
+      "step": 8,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M16,135 C16,135 128,100 240,135",
+        "M16,135 C16,135 128,92 240,135"
+      ],
+      "eval_count": 54,
+      "eval_duration": 2883672452,
+      "total_duration": 4247740417
+    },
+    {
+      "step": 9,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M16,150 C16,150 128,115.5 240,150",
+        "M16,150 C16,150 135,110 240,150"
+      ],
+      "eval_count": 57,
+      "eval_duration": 3124022416,
+      "total_duration": 4627928708
+    },
+    {
+      "step": 10,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M16,165 C16,165 80,145 240,165",
+        "M16,165 C200,145 240,165 240,165"
+      ],
+      "eval_count": 39,
+      "eval_duration": 2068657669,
+      "total_duration": 3510286084
+    },
+    {
+      "step": 11,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate geometries differ by more than 3% of the canvas diagonal"
+    },
+    {
+      "step": 11,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M16,179 C16,179 135,150 240,179",
+        "M16,179 C16,179 145,160 240,179"
+      ],
+      "eval_count": 55,
+      "eval_duration": 3032992711,
+      "total_duration": 4603766167
+    },
+    {
+      "step": 12,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M16,194 C16,194 135,180 240,194",
+        "M16,194 C16,194 135,194 240,194"
+      ],
+      "eval_count": 39,
+      "eval_duration": 2097869962,
+      "total_duration": 3546465125
+    },
+    {
+      "step": 13,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M16,209 C16,209 110,170 240,209",
+        "M16,209 C16,209 120,165 240,209"
+      ],
+      "eval_count": 43,
+      "eval_duration": 2346481712,
+      "total_duration": 3771974709
+    },
+    {
+      "step": 14,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M16,223 C16,223 135,215 240,223",
+        "M16,223 C16,223 135,220 240,223"
+      ],
+      "eval_count": 43,
+      "eval_duration": 2292525711,
+      "total_duration": 3610864250
+    },
+    {
+      "step": 15,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M16,238 C16,238 180,215 240,238",
+        "M16,238 C16,238 195,205 240,238"
+      ],
+      "eval_count": 43,
+      "eval_duration": 2368797290,
+      "total_duration": 3724887292
+    }
+  ]
+}

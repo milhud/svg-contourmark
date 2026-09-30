@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
+from svgpathtools import parse_path
 
 from contourmark.core import WatermarkError
 from contourmark.inference import Candidate, GenerationSession, _winner, verify_generation
@@ -73,6 +74,15 @@ def test_reordered_and_merged_paths(generation):
     assert verify_generation(ET.tostring(root), manifest, KEY)["detected"]
 
 
+def test_path_translation_preserves_shape_evidence(generation):
+    svg, manifest = generation
+    root = ET.fromstring(svg)
+    for index, path in enumerate(root):
+        shift = 1 if index % 2 else -1
+        path.set("d", parse_path(path.get("d")).translated(shift + 0j).d())
+    assert verify_generation(ET.tostring(root), manifest, KEY)["detected"]
+
+
 def test_different_choice_does_not_verify(generation):
     svg, manifest = generation
     result = verify_generation(svg, manifest, KEY)
@@ -81,6 +91,44 @@ def test_different_choice_does_not_verify(generation):
     chosen = manifest["steps"][0]["candidates"][index]["d"]
     changed = svg.replace(chosen.encode(), alternate.encode(), 1)
     assert not verify_generation(changed, manifest, KEY)["detected"]
+
+
+def test_partial_path_removal():
+    session = GenerationSession(KEY, "0 0 200 200", "redundant-asset")
+    for i in range(32):
+        y = 5 + 6 * i
+        session.add_step([
+            Candidate(f"M 10 {y} C 60 {y-9} 140 {y+9} 190 {y}"),
+            Candidate(f"M 10 {y} C 60 {y-7} 140 {y+11} 190 {y}"),
+        ], {"fill": "none", "stroke": "#333"})
+    svg, manifest = session.finish()
+    root = ET.fromstring(svg)
+    root[:] = list(root)[8:]
+    result = verify_generation(ET.tostring(root), manifest, KEY)
+    assert result["detected"], result
+    assert result["matched_steps"] == 24
+
+
+def test_hidden_contours_do_not_count(generation):
+    svg, manifest = generation
+    root = ET.fromstring(svg)
+    list(root)[0].set("style", "display:none")
+    assert not verify_generation(ET.tostring(root), manifest, KEY)["detected"]
+
+
+def test_rendering_indirection_cannot_preserve_a_false_positive(generation):
+    svg, manifest = generation
+    root = ET.fromstring(svg)
+    root.set("transform", "translate(1000 1000)")
+    with pytest.raises(WatermarkError, match="unsupported rendering attribute"):
+        verify_generation(ET.tostring(root), manifest, KEY)
+
+    root = ET.fromstring(svg)
+    group = ET.Element("{http://www.w3.org/2000/svg}g", {"opacity": "0"})
+    group.extend(list(root))
+    root[:] = [group]
+    with pytest.raises(WatermarkError, match="no visible contours"):
+        verify_generation(ET.tostring(root), manifest, KEY)
 
 
 def test_gumbel_sampling_preserves_categorical_distribution():

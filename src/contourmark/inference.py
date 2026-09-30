@@ -15,15 +15,67 @@ import math
 import secrets
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 from svgpathtools import parse_path
 from scipy.optimize import linear_sum_assignment
 
-from .core import WatermarkError, _contours, _manifest_mac, _parse_svg, _sample
+from .core import WatermarkError, _contours, _manifest_mac, _parse_svg, _sample, _tag
 
 
 SVG_NS = "http://www.w3.org/2000/svg"
+_PAINT_PROPERTIES = {
+    "fill", "stroke", "stroke-width", "fill-rule", "opacity", "fill-opacity",
+    "stroke-opacity", "stroke-linecap", "stroke-linejoin", "display", "visibility",
+}
+_ROOT_ATTRIBUTES = {"viewBox", "width", "height", "version", "xmlns", "preserveAspectRatio"} | _PAINT_PROPERTIES
+_NODE_ATTRIBUTES = {"id", "style"} | _PAINT_PROPERTIES
+
+
+def _declarations(element: ET.Element) -> dict[str, str]:
+    declarations = {name: value.strip().lower() for name, value in element.attrib.items() if name in _PAINT_PROPERTIES}
+    for part in element.get("style", "").split(";"):
+        if not part.strip():
+            continue
+        if ":" not in part:
+            raise WatermarkError("invalid inline style")
+        name, value = part.split(":", 1)
+        name = name.strip().lower()
+        if name not in _PAINT_PROPERTIES:
+            raise WatermarkError(f"unsupported rendering property: {name}")
+        declarations[name] = value.strip().lower()
+    return declarations
+
+
+def _numeric_paint(value: str, name: str) -> float:
+    token = value.removesuffix("px").removesuffix("%")
+    try:
+        number = float(token)
+    except ValueError as exc:
+        raise WatermarkError(f"unsupported numeric rendering value for {name}") from exc
+    if not math.isfinite(number) or number < 0:
+        raise WatermarkError(f"invalid numeric rendering value for {name}")
+    return number
+
+
+def _validate_render_subset(root: ET.Element) -> None:
+    """Fail closed on SVG features whose rendered geometry we do not evaluate."""
+    if _tag(root) != "svg":
+        raise WatermarkError("root element must be svg")
+    for element in root.iter():
+        tag = _tag(element)
+        if tag not in {"svg", "g", "path"}:
+            raise WatermarkError(f"unsupported rendering element: {tag}")
+        allowed = _ROOT_ATTRIBUTES if element is root else (_NODE_ATTRIBUTES | ({"d"} if tag == "path" else set()))
+        for name in element.attrib:
+            if name not in allowed:
+                raise WatermarkError(f"unsupported rendering attribute: {name}")
+        for name, value in _declarations(element).items():
+            if "url(" in value or "!important" in value or value in {"inherit", "currentcolor"}:
+                raise WatermarkError(f"unsupported rendering value for {name}")
+            if name in {"opacity", "fill-opacity", "stroke-opacity", "stroke-width"}:
+                _numeric_paint(value, name)
 
 
 @dataclass(frozen=True)
@@ -32,7 +84,8 @@ class Candidate:
     weight: float = 1.0
 
 
-def _path_points(d: str, count: int = 96) -> list[complex]:
+@lru_cache(maxsize=8192)
+def _path_points(d: str, count: int = 96) -> tuple[complex, ...]:
     try:
         path = parse_path(d)
     except Exception as exc:
@@ -40,7 +93,7 @@ def _path_points(d: str, count: int = 96) -> list[complex]:
     subpaths = path.continuous_subpaths()
     if len(subpaths) != 1 or not len(subpaths[0]) or subpaths[0].length() <= 0:
         raise WatermarkError("each candidate must be one nonempty contour")
-    return _sample(subpaths[0], count)
+    return tuple(_sample(subpaths[0], count))
 
 
 def _fingerprint(d: str) -> str:
@@ -61,6 +114,25 @@ def _distance(a: list[complex], b: list[complex], scale: float) -> float:
     return math.sqrt(sum(abs(x - y) ** 2 for x, y in zip(a, b)) / len(a)) / scale
 
 
+def _mean(points: list[complex] | tuple[complex, ...]) -> complex:
+    return sum(points) / len(points)
+
+
+def _shape_distance(a: list[complex] | tuple[complex, ...], b: list[complex] | tuple[complex, ...], scale: float) -> float:
+    """Contour distance invariant to independent path translations."""
+    offset = _mean(a) - _mean(b)
+    return math.sqrt(sum(abs(x - y - offset) ** 2 for x, y in zip(a, b)) / len(a)) / scale
+
+
+def _matching_distance(a: list[complex] | tuple[complex, ...], b: list[complex] | tuple[complex, ...], scale: float, position_tolerance: float) -> float:
+    drift = abs(_mean(a) - _mean(b)) / scale
+    if drift > position_tolerance:
+        return math.inf
+    # Position disambiguates similar contours at different drawing steps,
+    # without turning small translations into a failed shape comparison.
+    return _shape_distance(a, b, scale) + drift * 1e-6
+
+
 def _winner(key: bytes, asset_id: str, step: int, candidates: list[dict[str, Any]]) -> int:
     scores = []
     for candidate in candidates:
@@ -71,6 +143,39 @@ def _winner(key: bytes, asset_id: str, step: int, candidates: list[dict[str, Any
     return max(range(len(scores)), key=scores.__getitem__)
 
 
+def _binomial_tail(probabilities: list[float], successes: int) -> float:
+    """P[X >= successes] for independent, nonidentical Bernoulli variables."""
+    distribution = [1.0]
+    for probability in probabilities:
+        next_distribution = [0.0] * (len(distribution) + 1)
+        for count, mass in enumerate(distribution):
+            next_distribution[count] += mass * (1 - probability)
+            next_distribution[count + 1] += mass * probability
+        distribution = next_distribution
+    return sum(distribution[successes:])
+
+
+def _visible(element: ET.Element, parents: dict[ET.Element, ET.Element]) -> bool:
+    """Determine visibility for the strictly supported paint/style subset."""
+    current: ET.Element | None = element
+    paint: dict[str, str] = {}
+    while current is not None:
+        declarations = _declarations(current)
+        if declarations.get("display") == "none" or declarations.get("visibility") in {"hidden", "collapse"}:
+            return False
+        if "opacity" in declarations and _numeric_paint(declarations["opacity"], "opacity") == 0:
+            return False
+        for name in ("fill", "stroke", "stroke-width", "fill-opacity", "stroke-opacity"):
+            if name not in paint and name in declarations:
+                paint[name] = declarations[name]
+        current = parents.get(current)
+    fill = paint.get("fill", "black")
+    stroke = paint.get("stroke", "none")
+    fill_visible = fill != "none" and _numeric_paint(paint.get("fill-opacity", "1"), "fill-opacity") != 0
+    stroke_visible = stroke != "none" and _numeric_paint(paint.get("stroke-opacity", "1"), "stroke-opacity") != 0 and _numeric_paint(paint.get("stroke-width", "1"), "stroke-width") != 0
+    return fill_visible or stroke_visible
+
+
 class GenerationSession:
     """Call ``add_step`` while a provider is generating; ``finish`` emits the SVG.
 
@@ -78,7 +183,7 @@ class GenerationSession:
     responsible for ensuring candidate contours have comparable visual quality.
     """
 
-    def __init__(self, key: bytes, view_box: str, asset_id: str | None = None, match_tolerance: float = 0.0005):
+    def __init__(self, key: bytes, view_box: str, asset_id: str | None = None, match_tolerance: float = 0.0005, position_tolerance: float = 0.01):
         if len(key) < 16:
             raise WatermarkError("key must contain at least 16 bytes")
         self.key = key
@@ -95,7 +200,10 @@ class GenerationSession:
         self.scale = math.hypot(w, h)
         if not 0 < match_tolerance <= 0.01:
             raise WatermarkError("match_tolerance must be in (0, 0.01]")
+        if not 0 < position_tolerance <= 0.05:
+            raise WatermarkError("position_tolerance must be in (0, 0.05]")
         self.match_tolerance = match_tolerance
+        self.position_tolerance = position_tolerance
         self.steps: list[dict[str, Any]] = []
         self.emitted: list[tuple[str, dict[str, str]]] = []
 
@@ -113,8 +221,8 @@ class GenerationSession:
         for i in range(len(points)):
             for j in range(i):
                 distance = _distance(points[i], points[j], self.scale)
-                if distance < 2 * self.match_tolerance:
-                    raise WatermarkError("candidate geometries are too close for reliable verification")
+                if _shape_distance(points[i], points[j], self.scale) < 2 * self.match_tolerance:
+                    raise WatermarkError("candidate shapes are too close for reliable verification")
                 if distance > 0.03:
                     raise WatermarkError("candidate geometries differ by more than 3% of the canvas diagonal")
         attributes = attributes or {}
@@ -143,6 +251,7 @@ class GenerationSession:
             "asset_id": self.asset_id,
             "view_box": self.view_box,
             "match_tolerance": self.match_tolerance,
+            "position_tolerance": self.position_tolerance,
             "steps": self.steps,
         }
         return output, {**unsigned, "mac": _manifest_mac(unsigned, self.key)}
@@ -154,43 +263,59 @@ def verify_generation(svg: bytes, manifest: dict[str, Any], key: bytes) -> dict[
         raise WatermarkError("manifest authentication failed")
     if unsigned.get("schema") != "contourmark-inference-v1":
         raise WatermarkError("unsupported generation manifest")
-    contours = [contour for _, _, contour in _contours(_parse_svg(svg))]
+    tree = _parse_svg(svg)
+    root = tree.getroot()
+    _validate_render_subset(root)
+    parents = {child: parent for parent in root.iter() for child in parent}
+    raw_contours = _contours(tree)
+    contours = [contour for element, _, contour in raw_contours if _visible(element, parents)]
     steps = unsigned["steps"]
-    if len(contours) != len(steps):
-        raise WatermarkError("contour count changed; generation steps cannot be synchronized")
+    if not contours:
+        raise WatermarkError("no visible contours remain")
     x, y, w, h = [float(v) for v in unsigned["view_box"].replace(",", " ").split()]
     scale = math.hypot(w, h)
+    try:
+        candidate_box = [float(v) for v in root.get("viewBox", "").replace(",", " ").split()]
+    except ValueError as exc:
+        raise WatermarkError("candidate viewBox is invalid") from exc
+    if len(candidate_box) != 4 or any(abs(a - b) > scale * 1e-6 for a, b in zip(candidate_box, (x, y, w, h))):
+        raise WatermarkError("candidate viewBox changed")
     tolerance = unsigned["match_tolerance"]
+    position_tolerance = unsigned.get("position_tolerance", 0.01)
     observed_points = [_sample(contour, 96) for contour in contours]
     proposed_points = [[_path_points(candidate["d"]) for candidate in step["candidates"]] for step in steps]
-    cost = [
-        [min(_distance(observed, candidate, scale) for candidate in candidates) for observed in observed_points]
-        for candidates in proposed_points
-    ]
+    # Dummy columns let the assignment treat removed/redrawn paths as erasures.
+    cost = [[min(_matching_distance(observed, candidate, scale, position_tolerance) for candidate in candidates) for observed in observed_points] + [tolerance] * len(steps) for candidates in proposed_points]
     row_indices, column_indices = linear_sum_assignment(cost)
-    assignments = {int(row): int(column) for row, column in zip(row_indices, column_indices)}
+    assignments = {int(row): int(column) if column < len(contours) and cost[row][column] <= tolerance else None for row, column in zip(row_indices, column_indices)}
     matched = 0
-    probability = 1.0
+    null_probabilities = []
     details = []
     for index, step in enumerate(steps):
         observed_index = assignments[index]
-        observed = observed_points[observed_index]
-        distances = [_distance(observed, candidate, scale) for candidate in proposed_points[index]]
-        nearest = min(range(len(distances)), key=distances.__getitem__)
         expected = _winner(key, unsigned["asset_id"], index, step["candidates"])
+        null_probabilities.append(step["candidates"][expected]["probability"])
+        if observed_index is None:
+            details.append({"step": index, "observed_contour": None, "matched": False, "distance": None, "expected_index": expected, "nearest_index": None})
+            continue
+        observed = observed_points[observed_index]
+        distances = [_matching_distance(observed, candidate, scale, position_tolerance) for candidate in proposed_points[index]]
+        nearest = min(range(len(distances)), key=distances.__getitem__)
         exact = nearest == expected and distances[nearest] <= tolerance
         if exact:
             matched += 1
-            probability *= step["candidates"][expected]["probability"]
         details.append({"step": index, "observed_contour": observed_index, "matched": exact, "distance": distances[nearest], "expected_index": expected, "nearest_index": nearest})
-    # This is the exact conditional null probability of *all* keyed choices
-    # matching when unmarked choices are independently drawn from recorded q.
-    detected = matched == len(steps) and probability <= 0.01
+    p_value = _binomial_tail(null_probabilities, matched)
+    # Extra visible contours may be used to retain the watermark as a decoy
+    # while replacing the actual drawing; reject them until render-aware
+    # verification supports this case.
+    detected = len(contours) <= len(steps) and p_value <= 0.01
     return {
         "detected": detected,
         "matched_steps": matched,
         "total_steps": len(steps),
-        "conditional_p_value": probability if matched == len(steps) else None,
+        "conditional_p_value": p_value,
+        "visible_contours": len(contours),
         "details": details,
-        "assumption": "Candidates and probabilities were fixed independently of the secret key; unmarked choices follow their recorded categorical distributions.",
+        "assumption": "Candidates and probabilities were fixed independently of the secret key; unmarked choices follow their recorded categorical distributions. Attack survival is empirical, not guaranteed by this p-value.",
     }

@@ -1,0 +1,227 @@
+{
+  "model": "qwen3.5:4b",
+  "motif": "leaf",
+  "mode": "assisted",
+  "asset_id": "qwen-leaf-16-v1",
+  "steps": 16,
+  "seed": 20261003,
+  "status": "completed",
+  "elapsed_seconds": 68.56855499999983,
+  "svg_sha256": "18611db2fe574cb397cb4d767dcd3f2a3818e8d7efeb8adc0be2e78b6d4ba388",
+  "records": [
+    {
+      "step": 0,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C128,222 180,150 194,120",
+        "M128,222 C128,222 172,135 194,120"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2387149955,
+      "total_duration": 5553100417
+    },
+    {
+      "step": 1,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C128,222 165,145 189,155",
+        "M128,222 C128,222 175,155 189,155"
+      ],
+      "eval_count": 57,
+      "eval_duration": 3035140041,
+      "total_duration": 4160148833
+    },
+    {
+      "step": 2,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,222 C130,218 160,140 175,185",
+        "M128,222 C135,225 170,150 175,185"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2379713753,
+      "total_duration": 3550842250
+    },
+    {
+      "step": 3,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C145,210 160,145 153,205",
+        "M128,222 C150,205 170,140 153,205"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2403550461,
+      "total_duration": 3734763083
+    },
+    {
+      "step": 4,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,222 C130,220 175,150 128,212",
+        "M128,222 C140,225 180,155 128,212"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2383712665,
+      "total_duration": 3717492583
+    },
+    {
+      "step": 5,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C138,228 172,148 103,205",
+        "M128,222 C142,224 168,152 103,205"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2388466710,
+      "total_duration": 3704188625
+    },
+    {
+      "step": 6,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C148,215 158,155 81,185",
+        "M128,222 C152,218 165,145 81,185"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2463697166,
+      "total_duration": 3829176334
+    },
+    {
+      "step": 7,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C145,228 170,150 67,155",
+        "M128,222 C140,222 165,152 67,155"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2380560329,
+      "total_duration": 3694387834
+    },
+    {
+      "step": 8,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,222 C135,225 168,145 62,120",
+        "M128,222 C142,222 175,138 62,120"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2423675583,
+      "total_duration": 3784128000
+    },
+    {
+      "step": 9,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C142,218 165,145 67,85",
+        "M128,222 C138,225 168,140 67,85"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2385774586,
+      "total_duration": 3725702125
+    },
+    {
+      "step": 10,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C145,228 170,150 81,55",
+        "M128,222 C148,225 172,155 81,55"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2440063960,
+      "total_duration": 3801829292
+    },
+    {
+      "step": 11,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,222 C145,228 172,152 103,35",
+        "M128,222 C140,220 168,148 103,35"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2549375123,
+      "total_duration": 3940206125
+    },
+    {
+      "step": 12,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C145,215 172,140 128,28",
+        "M128,222 C142,222 168,145 128,28"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2385948914,
+      "total_duration": 3720311541
+    },
+    {
+      "step": 13,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C148,225 175,145 153,35",
+        "M128,222 C142,222 170,142 153,35"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2380858662,
+      "total_duration": 3710644334
+    },
+    {
+      "step": 14,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C142,218 165,155 175,55",
+        "M128,222 C148,210 170,140 175,55"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2380898290,
+      "total_duration": 3730860667
+    },
+    {
+      "step": 15,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate shapes are too close for reliable verification"
+    },
+    {
+      "step": 15,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,222 C138,208 172,115 189,85",
+        "M128,222 C145,210 178,108 189,85"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2511160749,
+      "total_duration": 4029844125
+    }
+  ]
+}

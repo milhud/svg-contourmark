@@ -1,0 +1,70 @@
+{
+  "asset": "32 synthetic cubic strokes, equal-weight alternatives",
+  "viewBox": "0 0 200 200",
+  "key_policy": "fixed public test key; attacks independent of key",
+  "attacks": {
+    "original": {
+      "detected": false,
+      "p_value": 0.05578475170687409,
+      "usable_contours": 32,
+      "skipped_contours": 0,
+      "svg_bytes": 3029
+    },
+    "reorder_paths": {
+      "detected": false,
+      "p_value": 0.05578475170687409,
+      "usable_contours": 32,
+      "skipped_contours": 0,
+      "svg_bytes": 2990
+    },
+    "delete_first_8_of_32": {
+      "detected": false,
+      "p_value": 0.2019583881796899,
+      "usable_contours": 24,
+      "skipped_contours": 0,
+      "svg_bytes": 2281
+    },
+    "translate_all_0.5_unit": {
+      "detected": false,
+      "p_value": 0.618916262397524,
+      "usable_contours": 22,
+      "skipped_contours": 0,
+      "svg_bytes": 3502
+    },
+    "translate_all_1_unit": {
+      "detected": false,
+      "p_value": 0.9358034202975327,
+      "usable_contours": 32,
+      "skipped_contours": 0,
+      "svg_bytes": 3502
+    },
+    "translate_all_2_units": {
+      "detected": false,
+      "p_value": 0.3823134032798935,
+      "usable_contours": 32,
+      "skipped_contours": 0,
+      "svg_bytes": 3502
+    },
+    "alternating_translate_1_unit": {
+      "detected": false,
+      "p_value": 0.9101078323027865,
+      "usable_contours": 32,
+      "skipped_contours": 0,
+      "svg_bytes": 3486
+    },
+    "scour": {
+      "detected": false,
+      "p_value": 0.05578475170687409,
+      "usable_contours": 32,
+      "skipped_contours": 0,
+      "svg_bytes": 2130
+    },
+    "svgo": {
+      "detected": false,
+      "p_value": 0.05578475170687409,
+      "usable_contours": 32,
+      "skipped_contours": 0,
+      "svg_bytes": 2958
+    }
+  }
+}

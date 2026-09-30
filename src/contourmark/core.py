@@ -93,7 +93,15 @@ def _sample(path: SVGPath, count: int) -> list[complex]:
     length = path.length(error=1e-5)
     closed = path.isclosed()
     divisor = count if closed else count - 1
-    return [path.point(path.ilength(length * i / divisor, error=1e-5)) for i in range(count)]
+    points: list[complex] = []
+    for i in range(count):
+        if not closed and i == 0:
+            points.append(path.start)
+        elif not closed and i == count - 1:
+            points.append(path.end)
+        else:
+            points.append(path.point(path.ilength(length * i / divisor, error=1e-5)))
+    return points
 
 
 def _frame(points: list[complex], closed: bool) -> tuple[list[complex], list[complex]]:
