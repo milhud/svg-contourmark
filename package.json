@@ -1,0 +1,9 @@
+{
+  "name": "contourmark-evaluation",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Optional SVGO evaluation dependency for ContourMark",
+  "devDependencies": {
+    "svgo": "^4.1.0"
+  }
+}
