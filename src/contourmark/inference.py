@@ -30,7 +30,9 @@ _PAINT_PROPERTIES = {
     "stroke-opacity", "stroke-linecap", "stroke-linejoin", "display", "visibility",
 }
 _ROOT_ATTRIBUTES = {"viewBox", "width", "height", "version", "xmlns", "preserveAspectRatio"} | _PAINT_PROPERTIES
-_NODE_ATTRIBUTES = {"id", "style"} | _PAINT_PROPERTIES
+# ``filling`` is inert metadata emitted by OmniSVG's tokenizer/decoder.  It is
+# not an SVG presentation attribute and has no browser rendering semantics.
+_NODE_ATTRIBUTES = {"id", "style", "filling"} | _PAINT_PROPERTIES
 
 
 def _declarations(element: ET.Element) -> dict[str, str]:
@@ -131,6 +133,19 @@ def _matching_distance(a: list[complex] | tuple[complex, ...], b: list[complex] 
     # Position disambiguates similar contours at different drawing steps,
     # without turning small translations into a failed shape comparison.
     return _shape_distance(a, b, scale) + drift * 1e-6
+
+
+def _acceptance_radius(candidates: list[tuple[complex, ...]], scale: float, base_tolerance: float) -> float:
+    """Largest conservative radius that keeps candidate regions disjoint."""
+    separation = min(
+        _shape_distance(candidates[i], candidates[j], scale)
+        for i in range(len(candidates))
+        for j in range(i)
+    )
+    # Candidate creation requires separation >= 2 * base_tolerance.  Expanding
+    # to 45% of the closest pair distance preserves a 10% rejection gap around
+    # each decision boundary while adapting robustness to proposal diversity.
+    return max(base_tolerance, 0.45 * separation)
 
 
 def _winner(key: bytes, asset_id: str, step: int, candidates: list[dict[str, Any]]) -> int:
@@ -284,28 +299,41 @@ def verify_generation(svg: bytes, manifest: dict[str, Any], key: bytes) -> dict[
     position_tolerance = unsigned.get("position_tolerance", 0.01)
     observed_points = [_sample(contour, 96) for contour in contours]
     proposed_points = [[_path_points(candidate["d"]) for candidate in step["candidates"]] for step in steps]
+    acceptance_radii = [_acceptance_radius(candidates, scale, tolerance) for candidates in proposed_points]
     # Dummy columns let the assignment treat removed/redrawn paths as erasures.
-    cost = [[min(_matching_distance(observed, candidate, scale, position_tolerance) for candidate in candidates) for observed in observed_points] + [tolerance] * len(steps) for candidates in proposed_points]
+    cost = [
+        [min(_matching_distance(observed, candidate, scale, position_tolerance) for candidate in candidates) for observed in observed_points]
+        + [acceptance_radii[index]] * len(steps)
+        for index, candidates in enumerate(proposed_points)
+    ]
     row_indices, column_indices = linear_sum_assignment(cost)
-    assignments = {int(row): int(column) if column < len(contours) and cost[row][column] <= tolerance else None for row, column in zip(row_indices, column_indices)}
+    assignments = {
+        int(row): int(column) if column < len(contours) and cost[row][column] <= acceptance_radii[row] else None
+        for row, column in zip(row_indices, column_indices)
+    }
     matched = 0
+    recognized = 0
     null_probabilities = []
+    all_null_probabilities = []
     details = []
     for index, step in enumerate(steps):
         observed_index = assignments[index]
         expected = _winner(key, unsigned["asset_id"], index, step["candidates"])
-        null_probabilities.append(step["candidates"][expected]["probability"])
+        all_null_probabilities.append(step["candidates"][expected]["probability"])
         if observed_index is None:
-            details.append({"step": index, "observed_contour": None, "matched": False, "distance": None, "expected_index": expected, "nearest_index": None})
+            details.append({"step": index, "observed_contour": None, "matched": False, "distance": None, "acceptance_radius": acceptance_radii[index], "expected_index": expected, "nearest_index": None})
             continue
+        recognized += 1
+        null_probabilities.append(step["candidates"][expected]["probability"])
         observed = observed_points[observed_index]
         distances = [_matching_distance(observed, candidate, scale, position_tolerance) for candidate in proposed_points[index]]
         nearest = min(range(len(distances)), key=distances.__getitem__)
-        exact = nearest == expected and distances[nearest] <= tolerance
+        exact = nearest == expected and distances[nearest] <= acceptance_radii[index]
         if exact:
             matched += 1
-        details.append({"step": index, "observed_contour": observed_index, "matched": exact, "distance": distances[nearest], "expected_index": expected, "nearest_index": nearest})
-    p_value = _binomial_tail(null_probabilities, matched)
+        details.append({"step": index, "observed_contour": observed_index, "matched": exact, "distance": distances[nearest], "acceptance_radius": acceptance_radii[index], "expected_index": expected, "nearest_index": nearest})
+    p_value = _binomial_tail(null_probabilities, matched) if null_probabilities else 1.0
+    conservative_p_value = _binomial_tail(all_null_probabilities, matched)
     # Extra visible contours may be used to retain the watermark as a decoy
     # while replacing the actual drawing; reject them until render-aware
     # verification supports this case.
@@ -313,9 +341,11 @@ def verify_generation(svg: bytes, manifest: dict[str, Any], key: bytes) -> dict[
     return {
         "detected": detected,
         "matched_steps": matched,
+        "recognized_steps": recognized,
         "total_steps": len(steps),
         "conditional_p_value": p_value,
+        "conservative_p_value": conservative_p_value,
         "visible_contours": len(contours),
         "details": details,
-        "assumption": "Candidates and probabilities were fixed independently of the secret key; unmarked choices follow their recorded categorical distributions. Attack survival is empirical, not guaranteed by this p-value.",
+        "assumption": "Candidates and probabilities were fixed independently of the secret key; unmarked recognized choices follow their recorded categorical distributions; conditional detection additionally assumes erasure/recognition is independent of the secret keyed winner. The conservative p-value treats erasures as failures. Attack survival is empirical.",
     }

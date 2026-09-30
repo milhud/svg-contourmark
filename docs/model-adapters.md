@@ -1,6 +1,6 @@
 # Autoregressive model adapters
 
-Status: implementable adapter contract, with the probability-preserving core tested locally. OmniSVG weights have not been run on this Apple Silicon host.
+Status: implementable adapter contract, with the probability-preserving core tested locally and an official hosted OmniSVG 4B output assessed. OmniSVG weights have not been run on this Apple Silicon host, and the hosted API does not expose its decoding logits.
 
 ## Integration boundary
 
@@ -45,7 +45,9 @@ else:
 
 The published tokenizer maps each coordinate token to one point on a 200 by 200 grid, which makes this boundary unusually clean. The remaining research work is a grammar state machine and a geometry-synchronizing verifier that turns a minified SVG back into the same sequence of coordinate decisions. A token-only detector would fail after equivalent path command rewriting, so it is insufficient for this project. Upstream sources: [OmniSVG repository](https://github.com/OmniSVG/OmniSVG), [inference implementation](https://github.com/OmniSVG/OmniSVG/blob/main/inference.py), [tokenizer](https://github.com/OmniSVG/OmniSVG/blob/main/tokenizer.py), and [configuration](https://github.com/OmniSVG/OmniSVG/blob/main/config.yaml).
 
-The released README reports about 17 GB of GPU memory for OmniSVG 1.1 4B. This machine exposes 16 GB of Metal GPU memory, while the official environment targets CUDA 12.1. Downloading the 7.69 GB checkpoint would remain below the project's 100 GB limit, but it would not establish runnable compatibility on this host. The current evidence is therefore source-level integration analysis, not an OmniSVG execution result.
+The released README reports about 17 GB of GPU memory for OmniSVG 1.1 4B. This machine exposes 16 GB of Metal GPU memory, while the official environment targets CUDA 12.1. Downloading the 7.69 GB checkpoint would remain below the project's 100 GB limit, but it would not establish runnable compatibility on this host.
+
+We instead called the official public Hugging Face Space with its 4B option. It generated `experiments/results/omnisvg_rocket.svg`, a 3,381-byte document containing one path. The untouched output passes the strict path-subset assessor after recognizing OmniSVG's nonstandard `filling="0"` field as inert producer metadata. This is a genuine specialist-model output and establishes structural carrier coverage. It is not a watermarked OmniSVG run: the Gradio endpoint returns a completed SVG and exposes neither logits nor a pre-sampling callback. `experiments/omnisvg_space.py` and the adjacent JSON report make this boundary reproducible. [Official Space](https://huggingface.co/spaces/OmniSVG/OmniSVG-3B)
 
 ## Icon-focused generators
 

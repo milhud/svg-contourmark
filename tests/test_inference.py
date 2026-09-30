@@ -7,7 +7,7 @@ import pytest
 from svgpathtools import parse_path
 
 from contourmark.core import WatermarkError
-from contourmark.inference import Candidate, GenerationSession, _winner, verify_generation
+from contourmark.inference import Candidate, GenerationSession, _acceptance_radius, _path_points, _shape_distance, _winner, verify_generation
 
 
 KEY = bytes(range(32))
@@ -107,13 +107,28 @@ def test_partial_path_removal():
     result = verify_generation(ET.tostring(root), manifest, KEY)
     assert result["detected"], result
     assert result["matched_steps"] == 24
+    assert result["recognized_steps"] == 24
+    assert result["conditional_p_value"] == pytest.approx(2 ** -24)
 
 
 def test_hidden_contours_do_not_count(generation):
     svg, manifest = generation
     root = ET.fromstring(svg)
     list(root)[0].set("style", "display:none")
-    assert not verify_generation(ET.tostring(root), manifest, KEY)["detected"]
+    result = verify_generation(ET.tostring(root), manifest, KEY)
+    assert result["detected"]
+    assert result["recognized_steps"] == 8
+    assert result["conditional_p_value"] == pytest.approx(2 ** -8)
+
+
+def test_too_few_recognized_choices_do_not_detect(generation):
+    svg, manifest = generation
+    root = ET.fromstring(svg)
+    root[:] = list(root)[:6]
+    result = verify_generation(ET.tostring(root), manifest, KEY)
+    assert not result["detected"]
+    assert result["recognized_steps"] == 6
+    assert result["conditional_p_value"] == pytest.approx(2 ** -6)
 
 
 def test_rendering_indirection_cannot_preserve_a_false_positive(generation):
@@ -141,6 +156,18 @@ def test_requires_distinct_geometry():
     session = GenerationSession(KEY, "0 0 200 200")
     with pytest.raises(WatermarkError, match="distinct geometry"):
         session.add_step([Candidate("M0 0L100 0"), Candidate("M0 0 L100 0")])
+
+
+def test_adaptive_acceptance_regions_remain_disjoint():
+    candidates = [
+        _path_points("M0 0 C20 -15 80 15 100 0"),
+        _path_points("M0 0 C20 -5 80 25 100 0"),
+    ]
+    scale = 200 * 2**0.5
+    separation = _shape_distance(candidates[0], candidates[1], scale)
+    radius = _acceptance_radius(candidates, scale, 0.0005)
+    assert radius < separation / 2
+    assert separation - 2 * radius == pytest.approx(0.1 * separation)
 
 
 def test_cli_end_to_end(tmp_path):

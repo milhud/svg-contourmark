@@ -12,6 +12,13 @@ def test_path_only_document_is_eligible():
     assert not result["universal_watermark_guarantee"]
 
 
+def test_omnisvg_filling_metadata_is_inert():
+    source = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path filling="0" fill="#000" d="M0 0L10 10"/></svg>'
+    result = assess_svg(source)
+    assert result["whole_document_supported"]
+    assert result["status"] == "eligible_path_subset"
+
+
 def test_mixed_content_fails_closed():
     source = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
       <path d="M0 0L10 10"/><text x="1" y="5">A</text>

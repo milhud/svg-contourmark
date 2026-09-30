@@ -52,6 +52,8 @@ Candidate-assisted verification authenticates the private manifest, parses candi
 
 Current prototype supports one contour per proposed path and 2–16 alternatives per step. Candidates must differ enough to remain distinguishable after minification but by at most 3% of the canvas diagonal. Assisted verification matches contours geometrically across path reordering, merging, and bounded independent translations. Tests exercise Scour and SVGO. Three 16-stroke Qwen-generated trials verify before and after both optimizers, rounding, reorder, and translation. A keyless control-point attack defeats all three with small but measurable render changes, so these trials are evidence of execution and limits rather than a model-wide robustness claim.
 
+The official hosted OmniSVG 4B option also produced a real one-path artifact that passes the strict carrier assessor. Its public API returns only the final SVG, so that run validates output compatibility but cannot exercise inference-time insertion; the model runtime must expose logits or a pre-sampling candidate hook.
+
 `contourmark assess` inventories an arbitrary SVG and fails closed for text, embedded images, filters, rigid primitives, CSS/transform indirection, and mixed content. It reports path eligibility but never infers nonzero watermark capacity from syntax alone; capacity requires actual generator alternatives.
 
 See [research design](docs/research.md) for the mathematical argument, related work, threat model, and experimental plan.

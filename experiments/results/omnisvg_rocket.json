@@ -1,0 +1,38 @@
+{
+  "status": "completed",
+  "endpoint": "https://omnisvg-omnisvg-3b.hf.space",
+  "api_name": "gradio_text_to_svg",
+  "request": {
+    "data": [
+      "A clean black outline rocket icon, centered, simple geometric vector style, white background",
+      "4B",
+      1,
+      0.5,
+      0.88,
+      50,
+      1.05,
+      512
+    ]
+  },
+  "space_status": "\u2705 Using 4B model",
+  "svg_sha256": "5d598f2aadc1fcc6861c768e55d356fa1c9828ae6465d1bf894fd327ceb20d0b",
+  "svg_bytes": 3381,
+  "assessment": {
+    "status": "eligible_path_subset",
+    "whole_document_supported": true,
+    "supported_contours": 1,
+    "element_counts": {
+      "path": 1,
+      "svg": 1
+    },
+    "unsupported_feature_counts": {},
+    "choice_capacity_bits": null,
+    "capacity_reason": "Capacity requires generator-provided admissible alternatives; syntax alone cannot establish nonzero choice capacity.",
+    "universal_watermark_guarantee": false,
+    "reasons": [
+      "The document is inside the verifier's strict path/group rendering subset."
+    ]
+  },
+  "watermark_injected": false,
+  "limitation": "The public endpoint returns a completed SVG and exposes no logits or pre-sampling candidate hook."
+}

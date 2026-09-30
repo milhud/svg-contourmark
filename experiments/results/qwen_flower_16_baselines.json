@@ -4,19 +4,23 @@
     "contourmark_assisted": {
       "original": {
         "detected": true,
-        "p_value": 1.52587890625e-05
+        "conditional_p_value": 1.52587890625e-05,
+        "conservative_p_value": 1.52587890625e-05
       },
       "round_path_2_decimals": {
         "detected": true,
-        "p_value": 1.52587890625e-05
+        "conditional_p_value": 1.52587890625e-05,
+        "conservative_p_value": 1.52587890625e-05
       },
       "scour": {
         "detected": true,
-        "p_value": 1.52587890625e-05
+        "conditional_p_value": 1.52587890625e-05,
+        "conservative_p_value": 1.52587890625e-05
       },
       "svgo": {
         "detected": true,
-        "p_value": 1.52587890625e-05
+        "conditional_p_value": 1.52587890625e-05,
+        "conservative_p_value": 1.52587890625e-05
       }
     },
     "xml_comment_metadata": {

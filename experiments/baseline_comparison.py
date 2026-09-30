@@ -55,7 +55,11 @@ def main() -> None:
     assisted_results = {}
     for name, candidate in variants(source).items():
         checked = verify_generation(candidate, manifest, key)
-        assisted_results[name] = {"detected": checked["detected"], "p_value": checked["conditional_p_value"]}
+        assisted_results[name] = {
+            "detected": checked["detected"],
+            "conditional_p_value": checked["conditional_p_value"],
+            "conservative_p_value": checked["conservative_p_value"],
+        }
     metadata_results = {name: {"detected": metadata_detect(candidate, args.asset_id)} for name, candidate in variants(metadata).items()}
     numeric_results = {name: numeric_lsb_detect(candidate, key, args.asset_id, chips=64) for name, candidate in variants(numeric).items()}
     report = {

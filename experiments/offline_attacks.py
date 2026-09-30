@@ -105,6 +105,13 @@ def main() -> None:
         "control_perturb_0.625_unit": perturbed_controls(source, 0.625),
         "control_perturb_0.75_unit": perturbed_controls(source, 0.75),
         "control_perturb_1_unit": perturbed_controls(source, 1.0),
+        "control_perturb_1.5_unit": perturbed_controls(source, 1.5),
+        "control_perturb_2_unit": perturbed_controls(source, 2.0),
+        "control_perturb_3_unit": perturbed_controls(source, 3.0),
+        "control_perturb_4_unit": perturbed_controls(source, 4.0),
+        "control_perturb_6_unit": perturbed_controls(source, 6.0),
+        "control_perturb_8_unit": perturbed_controls(source, 8.0),
+        "control_perturb_12_unit": perturbed_controls(source, 12.0),
     }
     scour = ROOT / ".venv/bin/scour"
     if scour.exists():
