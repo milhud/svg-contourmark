@@ -586,3 +586,18 @@ replication with the bin offset:
 **The variant experiment (`colab/run2.sh`) is still to be run.** The Colab
 README now gives a single cell to paste; its output folder is
 `run2_variants` and must contain twelve configuration folders.
+
+### Third Colab session (same configuration again)
+
+Commit `efb5b55`. The SVGs are byte-identical to the replication above, so
+generation is reproducible across sessions. SVGO installed in Colab this
+time, and the in-Colab SVGO rows match the local recomputation (no loss).
+Its summaries and nulls are in
+`experiments/results/geosample/colab_run1_repeat/evaluated_in_colab/`.
+Pooled key-randomized null at top-p 0.9 over the three sessions: 109 hits at
+1e-3 in 108,000 tests (108 expected).
+
+Because the stale notebook cell kept being re-run, `colab/run_single_gpu.sh`
+is now a dispatcher that runs the queued experiment (currently
+`colab/run2.sh`); the original run is `colab/run1.sh`. Running the notebook's
+"Full run" cell on a fresh clone now runs the variant experiment.

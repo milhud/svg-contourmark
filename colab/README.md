@@ -91,6 +91,8 @@ Note the time this took; it predicts the full run. If the loader raises `checkpo
 
 ## 6. Full run
 
+**Note:** `colab/run_single_gpu.sh` always runs the experiment currently queued in the repository. Right now that is the variant experiment described under "Run 2" below (12 configurations, written directly into `OUT`; use a new `RUN_NAME`). The original two-configuration run described in this section is `colab/run1.sh`.
+
 ```bash
 OUT=/content/drive/MyDrive/contourmark_runs/run1 TOP_PS="0.5 0.9" SEEDS=4 BATCH=16 bash colab/run_single_gpu.sh
 ```
