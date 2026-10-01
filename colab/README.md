@@ -39,11 +39,12 @@ git rev-parse HEAD
 # Colab already has a CUDA build of torch. Do NOT reinstall torch.
 pip install -q -e '.[test,eval]' transformers safetensors huggingface_hub einops matplotlib
 apt-get -qq install -y librsvg2-bin potrace > /dev/null
-npm install --silent --omit=dev --no-save svgo
+npm install --silent
+node --input-type=module -e "import('svgo').then(() => console.log('svgo ok'))"
 ```
 
 - `librsvg2-bin` and `potrace` are used by the rasterize-and-retrace attacks.
-- `svgo` is the optimizer attack.
+- `npm install` provides `svgo`, the optimizer attack (it also downloads the icon sets used by other experiments, about 340 MB). The last line must print `svgo ok`. In run 1 SVGO was not installed and every SVGO row was lost.
 - If `apt-get` or `npm` is unavailable, continue. Those attacks will be counted as errors in the summary, which is acceptable, but say so in the report.
 
 ## 3. Download the model
@@ -136,6 +137,29 @@ Then download the zip from the Colab file browser. The files that matter are:
 - `commit.txt` and `environment.txt`.
 
 To return them to the project, copy the `OUT` directory into `experiments/results/geosample/` of a local clone.
+
+## Run 2 (after run 1 has succeeded)
+
+Run 2 answers the questions run 1 raised. It needs the same setup (sections 0–4) on the **current** `main`; pull first if the clone is old (`git pull`).
+
+```bash
+OUT=/content/drive/MyDrive/contourmark_runs/run2 SEEDS=8 BATCH=16 bash colab/run2.sh
+```
+
+What it generates (30 prompts × `SEEDS` each):
+
+| Group | Configurations | Purpose |
+|---|---|---|
+| A | distribution-preserving sampler at top-p 0.5, 0.7, 0.8, 0.9, 1.0 (plain + marked) | Detection and quality against top-p |
+| B | at top-p 0.5 and 0.9, marked only: naive reuse; bias δ=2; bias δ=4 | Does a non-preserving sampler buy power on a real model, and at what quality cost? |
+| C | second key at top-p 0.9, marked only | How much do results depend on the key? |
+
+Then, for every configuration, it runs the attack suite (SVGO must be installed; the script stops if it is not), a key-randomized null where plain samples exist, and a CLIP prompt-retrieval quality score. It finishes with one table, `RUN_SUMMARY.md`.
+
+- **Time:** about 2.5 hours on an A100 at `SEEDS=8`; use `SEEDS=4` for about half. It resumes if interrupted.
+- **Downloads:** the CLIP model `openai/clip-vit-base-patch32` (about 600 MB) on first use.
+- **Report:** print `cat $OUT/RUN_SUMMARY.md`, `cat $OUT/environment.txt $OUT/commit.txt`, and the `levels` of each `*_null.json`. Then zip and download `OUT` as in section 8.
+- Group B results may show stronger detection with lower CLIP accuracy. That trade-off is the measurement; report both numbers.
 
 ## Troubleshooting
 

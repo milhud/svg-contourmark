@@ -22,14 +22,22 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 from contourmark import attacks as attack_lib  # noqa: E402
 from contourmark.geometry import load_document  # noqa: E402
-from contourmark.geosample import detect  # noqa: E402
+from contourmark.geosample import GeoParameters, detect as _detect  # noqa: E402
+from run_identity import detector_settings, evaluation_key  # noqa: E402
 
-KEY = hashlib.sha256(b"iconshop-geosample-evaluation-key").digest()
-WRONG = hashlib.sha256(b"iconshop-geosample-wrong-key").digest()
+
+def _context(directory: str):
+    """Key, parameters and statistic recorded when the run was generated."""
+    settings = detector_settings(Path(directory))
+    params = GeoParameters(**settings["params"])
+    key, wrong = evaluation_key(settings["key_label"]), evaluation_key(settings["key_label"], wrong=True)
+    detect = lambda source, k: _detect(source, k, params, statistic=settings["statistic"], gamma=settings["gamma"])  # noqa: E731
+    return key, wrong, detect
 
 
 def run(task: tuple[dict, str, list[bytes], list[str] | None]) -> dict:
     record, directory, partners, only = task
+    KEY, WRONG, detect = _context(directory)
     source = (Path(directory) / record["file"]).read_bytes()
     suite = attack_lib.standard_suite(partners or None)
     if only:

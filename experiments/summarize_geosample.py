@@ -41,6 +41,11 @@ def main() -> None:
     for attack in attacks:
         values = [r["attacks"][attack]["log10_p"] for r in marked if "log10_p" in r["attacks"].get(attack, {})]
         if not values:
+            # Every attempt failed (e.g. a missing tool): show the row, do not drop it.
+            attempted = [r["attacks"][attack] for r in marked if attack in r["attacks"]]
+            if attempted:
+                summary["attacks"][attack] = {"attempted": len(attempted), "attack_errors": sum("attack_error" in a for a in attempted),
+                                              "detect_errors": 0, "tpr_1e-6": None, "tpr_1e-3": None, "conditional_1e-6": None, "median_log10_p": None}
             continue
         conditional = [r["attacks"][attack]["log10_p"] for r in clean_ok if "log10_p" in r["attacks"].get(attack, {})]
         attempted = [r["attacks"][attack] for r in marked if attack in r["attacks"]]
@@ -85,6 +90,9 @@ def main() -> None:
              "Rates are over completed attacks; `errors` counts attacks that could not run (attack/detect).", "",
              "| Attack | TPR@1e-6 | TPR@1e-3 | conditional@1e-6 | median log10 p | attempted | errors |", "|---|---|---|---|---|---|---|"]
     for attack, info in summary["attacks"].items():
+        if info["tpr_1e-6"] is None:
+            lines.append(f"| {attack} | not run | not run | — | — | {info['attempted']} | {info['attack_errors']}/{info['detect_errors']} |")
+            continue
         conditional = "—" if info["conditional_1e-6"] is None else f"{info['conditional_1e-6']['rate']:.2f}"
         lines.append(f"| {attack} | {info['tpr_1e-6']['rate']:.2f} | {info['tpr_1e-3']['rate']:.2f} | {conditional} | {info['median_log10_p']:.1f} | {info['attempted']} | {info['attack_errors']}/{info['detect_errors']} |")
     lines += ["", "## Nulls", "", "| Null | n | FPR@1e-2 | FPR@1e-3 | FPR@1e-6 |", "|---|---|---|---|---|"]

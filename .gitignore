@@ -16,3 +16,4 @@ hpc/logs/
 paper/*.aux
 paper/*.log
 paper/*.out
+*.zip

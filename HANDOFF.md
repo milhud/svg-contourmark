@@ -515,3 +515,56 @@ repeated. These supersede §4 and §11 where they differ.
 
 The byte cost rose because keeping joins smooth leaves fewer free handles, so
 more curves are subdivided. All other rates moved by under 2 points.
+
+
+---
+
+## 13. First real-model results (Colab run 1) and run 2 — 1 October 2026
+
+The repository is now **public**. Colab instructions: `colab/README.md`;
+notebook: `colab/iconshop_geosample.ipynb`.
+
+### Run 1 (in `experiments/results/geosample/colab_run1/`)
+
+A100, commit `2f52683`, IconShop, 30 prompts × 4 seeds, distribution-preserving
+sampler. Full table: `RUN_SUMMARY.md` there and
+`docs/inference-watermark.md` §7.
+
+| | top-p 0.5 (default) | top-p 0.9 |
+|---|---|---|
+| Detected at 1e-6 / 1e-3 | 11% / 47% | 62% / 91% |
+| After SVGO, Scour, picosvg, any rounding, reorder, reverse | unchanged | unchanged |
+| After subdivision, flattening, retracing, stretch, 0.1% noise | 0% | 0–1% |
+| CLIP prompt-retrieval top-1, marked / plain | 44% / 45% | 40% / 40% |
+
+* The optimizer-survival goal holds on a real model.
+* Power is limited by entropy, as the sampler lab predicted.
+* Marked and plain quality are indistinguishable; raising top-p costs a few
+  points of CLIP accuracy (inside the interval at n=120).
+* SVGO failed to install in that Colab session, and the summary dropped the
+  rows silently. Both are fixed: the attack tables were recomputed locally
+  (`*_attacks_local.*`), all-error rows now print "not run", and `run2.sh`
+  refuses to start without SVGO.
+
+### Changes made for run 2
+
+* `GeoParameters.bin_offset` (default 0.37): integer-grid generators put
+  values exactly on bin edges, which cost detections under rotation and
+  scaling at top-p 0.5. Runs record their parameters; evaluation reads them
+  from the run manifest, so run 1 is still evaluated with offset 0.
+* Runner flags: `--mode bias --delta`, `--reuse allow`, `--key-label`,
+  `--marked-only`.
+* `experiments/clip_quality.py` (prompt-retrieval quality with prompt-level
+  bootstrap) and `experiments/summarize_run.py` (one table per run).
+* `colab/run2.sh`: top-p 0.5/0.7/0.8/0.9/1.0; naive reuse and bias δ=2, 4 at
+  0.5 and 0.9; a second key; attacks, nulls, CLIP, and `RUN_SUMMARY.md`.
+  About 2.5 hours on an A100 at 8 seeds.
+
+### What run 2 decides
+
+* Whether a top-p between 0.5 and 0.9 gives usable detection at a smaller
+  quality cost.
+* Whether the bias sampler or naive reuse buys real power at top-p 0.5, and
+  what it costs in CLIP accuracy.
+* Whether the bin offset removes the rotation/scale losses.
+* How much results move with the key.

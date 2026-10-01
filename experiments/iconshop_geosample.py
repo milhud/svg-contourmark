@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT / "models/iconshop"))
 
 from contourmark.geosample import GeoParameters, GeoWatermark, detect  # noqa: E402
 from contourmark.point_token_models import DecodeState, IconShopGrammar, watermarked_step  # noqa: E402
-from run_identity import file_digest, prepare_run  # noqa: E402
+from run_identity import evaluation_key, file_digest, prepare_run  # noqa: E402
 
 PROMPTS = [
     "star", "heart", "house", "car", "rocket", "calendar", "cat", "dog", "tree", "flower",
@@ -77,7 +77,8 @@ def generate(model, tokenizer, cfg, prompts: list[str], seeds: list[int], waterm
     rngs = [np.random.default_rng(seed) for seed in seeds]
     # Each sample owns every random stream. Sharding/batch membership must
     # not consume another sample's free-group or within-group randomness.
-    watermarks = [GeoWatermark(watermark.key, watermark.params, seed=seed) if watermark else None for seed in seeds]
+    watermarks = [GeoWatermark(watermark.key, watermark.params, seed=seed, reuse=watermark.reuse, mode=watermark.mode,
+                               delta=watermark.delta, gamma=watermark.gamma) if watermark else None for seed in seeds]
     states = [DecodeState(grammar) for _ in range(batch)]
     tokens: list[list[int]] = [[] for _ in range(batch)]
     keyed = [0] * batch
@@ -123,14 +124,24 @@ def main() -> None:
     parser.add_argument("--shard", type=int, default=0, help="this worker's index (e.g. one per GPU)")
     parser.add_argument("--num-shards", type=int, default=1)
     parser.add_argument("--seed-base", type=int, default=1000)
+    parser.add_argument("--mode", choices=["gumbel", "bias"], default="gumbel", help="gumbel preserves the distribution; bias trades it for power")
+    parser.add_argument("--delta", type=float, default=2.0, help="bias strength in nats (bias mode)")
+    parser.add_argument("--gamma", type=float, default=0.5, help="green fraction (bias mode)")
+    parser.add_argument("--reuse", choices=["mask", "allow"], default="mask", help="allow: naive score reuse (ablation, not distribution-preserving)")
+    parser.add_argument("--key-label", default="evaluation", help="selects a public benchmark key")
+    parser.add_argument("--marked-only", action="store_true", help="skip plain samples (they do not depend on the sampler variant)")
     args = parser.parse_args()
     if not 0 <= args.shard < args.num_shards:
         raise SystemExit("--shard must be in [0, --num-shards)")
     if args.batch < 1 or args.samples_per_prompt < 1 or args.max_tokens < 1:
         raise SystemExit("batch, samples-per-prompt and max-tokens must be positive")
     device = torch.device(args.device)
-    key = hashlib.sha256(b"iconshop-geosample-evaluation-key").digest()
-    wrong = hashlib.sha256(b"iconshop-geosample-wrong-key").digest()
+    key = evaluation_key(args.key_label)
+    wrong = evaluation_key(args.key_label, wrong=True)
+    statistic = "green" if args.mode == "bias" else "gamma"
+    sampler = {"mode": args.mode, "reuse": args.reuse}
+    if args.mode == "bias":
+        sampler.update({"delta": args.delta, "gamma": args.gamma})
     args.output.mkdir(parents=True, exist_ok=True)
     # One log per shard so concurrent GPU workers never write the same file;
     # merge with: cat samples.shard*.jsonl > samples.jsonl
@@ -144,6 +155,7 @@ def main() -> None:
         "top_p": args.top_p, "temperature": args.temperature, "max_tokens": args.max_tokens,
         "shard": args.shard, "num_shards": args.num_shards, "device": str(device),
         "watermark": asdict(GeoParameters()), "key_id": hashlib.sha256(key).hexdigest(),
+        "sampler": sampler, "key_label": args.key_label, "marked_only": args.marked_only,
         "files": {str(path.relative_to(ROOT)): file_digest(path) for path in files},
         "packages": {name: importlib.metadata.version(name) for name in ("torch", "transformers", "numpy", "scipy")},
     }
@@ -157,20 +169,20 @@ def main() -> None:
     model, tokenizer, cfg = load_model(device)
     jobs = [(p, args.seed_base + i) for p in args.prompts for i in range(args.samples_per_prompt)]
     jobs = jobs[args.shard::args.num_shards]
-    for marked in (False, True):
+    for marked in ((True,) if args.marked_only else (False, True)):
         todo = [(p, s) for p, s in jobs if (p, s, marked) not in done]
         for start in range(0, len(todo), args.batch):
             chunk = todo[start:start + args.batch]
-            watermark = GeoWatermark(key, seed=chunk[0][1]) if marked else None
+            watermark = GeoWatermark(key, seed=chunk[0][1], reuse=args.reuse, mode=args.mode, delta=args.delta, gamma=args.gamma) if marked else None
             results = generate(model, tokenizer, cfg, [p for p, _ in chunk], [s for _, s in chunk], watermark, device, args.top_p, args.temperature, args.max_tokens)
             with log.open("a") as stream:
                 for result in results:
                     name = f"{'wm' if marked else 'plain'}_{result['prompt'].replace(' ', '_')}_{result['seed']}.svg"
                     (args.output / name).write_bytes(result["svg"])
-                    check = detect(result["svg"], key)
+                    check = detect(result["svg"], key, statistic=statistic, gamma=args.gamma)
                     record = {k: v for k, v in result.items() if k != "svg"}
                     record.update({"run_id": run_id, "marked": marked, "file": name, "log10_p": check["log10_p_value"], "distinct_vertices": check["distinct_vertices"],
-                                   "wrong_key_log10_p": detect(result["svg"], wrong)["log10_p_value"], "top_p": args.top_p, "temperature": args.temperature})
+                                   "wrong_key_log10_p": detect(result["svg"], wrong, statistic=statistic, gamma=args.gamma)["log10_p_value"], "top_p": args.top_p, "temperature": args.temperature})
                     stream.write(json.dumps(record) + "\n")
             print(f"{'marked' if marked else 'plain'} {start + len(chunk)}/{len(todo)}", flush=True)
 

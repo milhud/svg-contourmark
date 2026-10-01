@@ -74,6 +74,11 @@ def main() -> None:
             record = json.loads(line)
             if not record["marked"] and (args.samples_dir / record["file"]).exists():
                 paths.append(str(args.samples_dir / record["file"]))
+    if not paths:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps({"documents": 0, "tests": 0, "note": "no plain samples in this run"}, indent=1) + "\n")
+        print("no plain samples; nothing to score")
+        return
     # Consistency check: the fast re-scorer must equal the shipped detector.
     for path in paths[:5]:
         key = hashlib.sha256(b"consistency").digest()

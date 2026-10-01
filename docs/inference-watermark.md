@@ -438,19 +438,58 @@ randomly a line or a cubic, top-p 1.0. Median 100 distinct descriptors.
   −8 after subdivision. That sampler does not preserve the output
   distribution (§3.1), so the numbers above are the ones to quote.
 
-### IconShop (real checkpoint)
+### IconShop (real checkpoint), run 1
 
-**To be measured on the cluster** (`hpc/README.md`). The 4-prompt pilot
-reported earlier (log10 p −3.5 to −4.7 at top-p 0.5) used the naive-reuse
-sampler. It is superseded and its raw outputs were not archived. Expect lower
-power with the corrected sampler. The run should report:
+Source: `experiments/results/geosample/colab_run1/` (`RUN_SUMMARY.md`). A100,
+commit `2f52683`, 30 prompts × 4 seeds, 120 plain and 120 marked icons per
+setting. Distribution-preserving sampler, bin offset 0 (the setting at the
+time). Attack tables were recomputed locally with SVGO, which failed to
+install in the Colab session.
 
-* detection rates at 1e-6 and 1e-3;
-* survival under attacks, with attack-error counts;
-* false-positive rates for plain samples and wrong keys;
-* plain vs marked statistics;
-* log10 p against the number of distinct descriptors, at top-p 0.5, 0.9 and
-  1.0.
+| | top-p 0.5 (model default) | top-p 0.9 |
+|---|---|---|
+| Detected at p ≤ 1e-6 | 11% | 62% |
+| Detected at p ≤ 1e-3 | 47% | 91% |
+| Median log10 p | −2.8 | −7.7 |
+| Median distinct descriptors | 56 | 100 |
+| With ≥ 80 descriptors: detected at 1e-6 | 31% (n=35) | 85% (n=74) |
+| After SVGO default / multipass / precision 2 / precision 1 | unchanged | unchanged |
+| After Scour, picosvg, rounding to 2, 1 or 0 decimals | unchanged | unchanged |
+| After reorder, reverse, restart, merge, split, mirror, translate | unchanged | unchanged |
+| After rotate 30° (of those detected clean) | 85% | 99% |
+| After scale ×0.37 (of those detected clean) | 77% | 100% |
+| After composition with 3 unmarked icons (of clean) | 31% | 65% |
+| After deleting half the contours (of clean) | 69% | 77% |
+| After subdivision, polyline flattening, retracing, aspect stretch | 0% | 0% |
+| After handle noise at 0.1% of the diagonal | 0% | 1% |
+| False positives at 1e-3: plain with key / marked with wrong key | 0% / 0% | 0% / 1.7% |
+| Key-randomized null on plain samples (36,000 tests) at 1e-2 / 1e-3 / 1e-4 | 0.0080 / 0.00078 / 0.00011 | 0.0084 / 0.0010 / 0.00008 |
+| CLIP prompt-retrieval top-1, marked / plain | 44% / 45% | 40% / 40% |
+| Generations truncated at the 512-token limit | 43 of 120 | 40 of 120 |
+
+Reading:
+
+* **The mark survives the whole optimizer and rounding family exactly**, on a
+  real model. That was the design goal.
+* **Detection power follows entropy.** At the model's default top-p only one
+  icon in nine clears 1e-6; at 0.9 three in five do, and 85% of the drawings
+  with at least 80 descriptors.
+* **Marked and plain outputs are indistinguishable in quality** at the same
+  top-p (CLIP top-1 differs by under one point; the interval is about ±10
+  points at this sample size). Raising top-p from 0.5 to 0.9 costs about five
+  points of CLIP top-1, again inside the interval.
+* **Rotation and down-scaling lost some detections at top-p 0.5.** IconShop
+  draws on an integer grid, so many angles and ratios sit exactly on bin
+  edges, where floating-point error flips them. `bin_offset` (now 0.37 by
+  default) moves the edges off round values; run 2 measures the effect.
+* **The wrong-key false-positive rate at top-p 0.9 (2 of 120 at 1e-3)** uses
+  one wrong key for all samples, so the trials share descriptor scores and
+  are not independent. The key-randomized null, which is the calibrated
+  check, is on target. At 1e-5 it shows 2 hits in 36,000 where 0.36 are
+  expected (probability about 5%); run 2 adds more trials.
+
+Run 2 (`colab/run2.sh`) adds top-p 0.7, 0.8 and 1.0, naive reuse and the bias
+sampler on the real model, a second key, and more seeds.
 
 ### Null on human icons
 

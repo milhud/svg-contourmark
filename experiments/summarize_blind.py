@@ -72,8 +72,11 @@ def main() -> None:
         per_attack = {}
         for attack in attacks:
             values = [e["attacks"][attack].get("log10_p", 0.0) for e in applicable if attack in e["attacks"] and "attack_error" not in e["attacks"][attack]]
-            if values:
-                per_attack[attack] = rate(values)
+            if not values and any(attack in e["attacks"] for e in applicable):
+                # Every attempt failed: keep the attack visible with its error count.
+                per_attack[attack] = {"rate": float("nan"), "n": 0, "hits": 0, "ci95": [0.0, 1.0]}
+            if attack in per_attack or values:
+                per_attack[attack] = rate(values) if values else per_attack[attack]
                 attempted = [e["attacks"][attack] for e in applicable if attack in e["attacks"]]
                 # Failures are reported, not hidden: rates are over completed attacks.
                 per_attack[attack]["attempted"] = len(attempted)
@@ -130,7 +133,7 @@ def main() -> None:
         cells = []
         for method in methods:
             entry = summary["methods"][method]["attacks"].get(attack)
-            cells.append("—" if entry is None else f"{entry['rate']:.2f}")
+            cells.append("—" if entry is None else ("not run" if entry["n"] == 0 else f"{entry['rate']:.2f}"))
         lines.append(f"| {attack} | " + " | ".join(cells) + " |")
     failures = [(m, a, v["attack_errors"], v["detect_errors"], v["attempted"]) for m in methods for a, v in summary["methods"][m]["attacks"].items() if v.get("attack_errors") or v.get("detect_errors")]
     lines += ["", "## Attack accounting", "", "Rates above are over completed attacks. Attacks that could not run or whose detector raised:", ""]

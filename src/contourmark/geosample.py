@@ -60,6 +60,13 @@ class GeoParameters:
     bulge_step: float = 0.05  # bin width of summed relative bulge
     straight_tolerance: float = 1.0  # degrees from 180 treated as no vertex
     max_log_ratio: float = 2.5  # skip vertices whose arms differ by > e^2.5
+    # Fraction of a bin by which every quantizer is shifted.  Generators that
+    # draw on an integer grid produce values exactly on round numbers (90
+    # degrees, equal arms, zero bulge); with no shift those sit on bin edges
+    # and a rotation's floating-point error flips them.  0.37 keeps 0, 30,
+    # 45, 60 and 90 degrees away from every edge.  Runs made before this
+    # parameter existed used 0.0.
+    bin_offset: float = 0.37
     threshold: float = 1e-6
 
     def validate(self) -> None:
@@ -143,7 +150,8 @@ def vertex_descriptor(before: Segment2, after: Segment2, params: GeoParameters) 
     if log_ratio > params.max_log_ratio:
         return None
     bulge = before.bulge + after.bulge
-    return ("v", int(angle // params.angle_step), int(log_ratio // params.ratio_step), int(bulge // params.bulge_step))
+    o = params.bin_offset
+    return ("v", math.floor(angle / params.angle_step + o), math.floor(log_ratio / params.ratio_step + o), math.floor(bulge / params.bulge_step + o))
 
 
 def tangent_descriptor(before: Segment2, after: Segment2, params: GeoParameters) -> tuple | None:
@@ -160,8 +168,9 @@ def tangent_descriptor(before: Segment2, after: Segment2, params: GeoParameters)
     if abs(arriving) <= 1e-12 or abs(departing) <= 1e-12:
         return None
     angle = math.degrees(abs(np.angle(departing / arriving)))
-    ratio = -1 if (before.straight or after.straight) else int(abs(math.log(abs(departing) / abs(arriving))) // params.ratio_step)
-    return ("t", int(angle // params.angle_step), ratio)
+    o = params.bin_offset
+    ratio = -1 if (before.straight or after.straight) else math.floor(abs(math.log(abs(departing) / abs(arriving))) / params.ratio_step + o)
+    return ("t", math.floor(angle / params.angle_step + o), ratio)
 
 
 def contour_descriptors(segments: list[Segment2], closed: bool, params: GeoParameters) -> list[tuple]:

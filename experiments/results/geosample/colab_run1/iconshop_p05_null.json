@@ -1,0 +1,35 @@
+{
+ "documents": 120,
+ "documents_with_vertices": 120,
+ "distinct_vertices_median": 56.5,
+ "keys_per_document": 300,
+ "tests": 36000,
+ "levels": {
+  "0.1": {
+   "rate": 0.06969444444444445,
+   "hits": 2509,
+   "bound": 0.1
+  },
+  "0.01": {
+   "rate": 0.008,
+   "hits": 288,
+   "bound": 0.01
+  },
+  "0.001": {
+   "rate": 0.0007777777777777777,
+   "hits": 28,
+   "bound": 0.001
+  },
+  "0.0001": {
+   "rate": 0.00011111111111111112,
+   "hits": 4,
+   "bound": 0.0001
+  },
+  "1e-05": {
+   "rate": 0.0,
+   "hits": 0,
+   "bound": 1e-05
+  }
+ },
+ "min_log10_p": -4.8049242468418365
+}
