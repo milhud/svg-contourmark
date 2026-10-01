@@ -352,7 +352,7 @@ A second, independent architecture. Like SynthID-Text or Gumbel text watermarks 
 
 ### Next: run on HPC
 
-**See `hpc/README.md`.** Clone the branch, run `bash hpc/setup.sh`, smoke-test on one GPU, then:
+**See `hpc/README.md`.** Clone the repo (main), run `bash hpc/setup.sh`, smoke-test on one GPU, then:
 * `sbatch hpc/generate_iconshop.sbatch` — 4 GPUs; top-p 0.5/0.9/1.0; 30 prompts × 16 seeds; plain and marked.
 * `sbatch hpc/evaluate_geosample.sbatch` — CPU job: attacks, summaries, nulls.
 

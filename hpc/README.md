@@ -23,7 +23,6 @@ This runbook covers the GPU experiments for the inference-time SVG watermark (`s
 ```bash
 git clone https://github.com/milhud/svg-contourmark.git
 cd svg-contourmark
-git checkout blind-spectral-watermark
 ```
 
 ## 2. One-time setup (login node, needs internet)
@@ -108,12 +107,12 @@ Expected time: tens of minutes on 32 cores.
 
 ## 6. What to bring back
 
-Either commit the results on the cluster and push to the branch:
+Either commit the results on the cluster and push to main:
 
 ```bash
 git add -f experiments/results/geosample hpc/logs
 git commit -m "IconShop geosample results (HPC)"
-git push origin blind-spectral-watermark
+git push origin main
 ```
 
 Or copy the directory back:
