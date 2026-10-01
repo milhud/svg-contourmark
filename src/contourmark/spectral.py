@@ -71,6 +71,8 @@ class SpectralParameters:
     min_gain: float = 0.4  # orthogonal Jacobian gain for a coefficient to be carried
     embed_margin: float = 0.625  # embedder marks coefficients with gain >= margin * min_gain
     max_densify: int = 4  # rounds of curved-segment splitting allowed while embedding
+    scheme: str = "qim"  # "ss": additive spread-spectrum ablation on the same carrier
+    smooth_join_degrees: float = 0.5  # joins smoother than this are kept smooth by the embedder
     max_relative_displacement: float = 0.08  # of the contour's mean radius; larger moves are rolled back
     rounding_fraction: float = 0.05  # serialization step as a fraction of delta * contour radius
     realize_gain: float = 0.25  # handle-model gain needed before a coefficient is embedded
@@ -290,6 +292,8 @@ def score(observations: list[Observation], key: bytes, params: SpectralParameter
     (dense marks) and the minimum group p-value (sparse marks, e.g. a marked
     icon composed with unmarked artwork).
     """
+    if params.scheme == "ss":
+        return _score_spread_spectrum(observations, key, params)
     groups: dict[str, np.ndarray] = {}
     for observation in observations:
         phasors = np.exp(2j * np.pi * observation.magnitudes / params.delta) * observation.selected
@@ -324,6 +328,88 @@ def score(observations: list[Observation], key: bytes, params: SpectralParameter
         "groups": len(groups),
         "terms": int(np.count_nonzero(weight_array)),
         "per_contour": per_contour,
+    }
+
+
+def capacity(source: bytes, params: SpectralParameters | None = None, visibility: str = "strict") -> dict:
+    """Keyless: how much evidence could this document carry?
+
+    Returns the number of carried coefficients, the smallest p-value a
+    perfectly aligned mark could reach, and an explicit outcome:
+
+    * ``supported``: a mark can reach the detection threshold;
+    * ``insufficient_capacity``: there is path geometry, but too little;
+    * ``unsupported``: nothing scorable (text, images, straight lines only,
+      or all geometry has unresolved visibility).
+
+    "Parsed without error" is not "can be marked"; report these outcomes in
+    every coverage denominator.
+    """
+    params = params or SpectralParameters()
+    params.validate()
+    if visibility == "render":
+        from .visibility import resolve_by_rendering
+
+        document = resolve_by_rendering(source)
+    else:
+        document = load_document(source)
+    observations = observe(document, params)
+    groups: dict[str, np.ndarray] = {}
+    for observation in observations:
+        groups[observation.seed] = groups.get(observation.seed, 0) + observation.selected.astype(float)
+    weights = np.concatenate(list(groups.values())) if groups else np.zeros(0)
+    weights = weights[weights > 0]
+    attainable = chernoff_log_p(float(weights.sum()), weights) / math.log(10) if len(weights) else 0.0
+    tags = {}
+    for element in document.root.iter():
+        name = element.tag.rsplit("}", 1)[-1] if isinstance(element.tag, str) else ""
+        if name in ("text", "image", "foreignObject"):
+            tags[name] = tags.get(name, 0) + 1
+    if not len(weights):
+        outcome = "unsupported"
+    elif attainable + math.log10(2) > math.log10(params.threshold):
+        outcome = "insufficient_capacity"
+    else:
+        outcome = "supported"
+    return {
+        "outcome": outcome, "coefficients": int(len(weights)), "usable_contours": len(observations),
+        "attainable_log10_p": attainable + math.log10(2) if len(weights) else 0.0,
+        "unscored_content": tags, **document.visibility_report(),
+    }
+
+
+def _signs(key: bytes, seed: str, count: int) -> np.ndarray:
+    return np.where(dithers(key, seed, count) > 0.5, 1.0, -1.0)
+
+
+def _score_spread_spectrum(observations: list[Observation], key: bytes, params: SpectralParameters) -> dict:
+    """Ablation detector: additive spread spectrum on the same carrier.
+
+    The statistic is the keyed-sign correlation ``sum s_k m_k``.  For a
+    document independent of the key the signs are i.i.d. Rademacher, so
+    Hoeffding gives ``P[T >= t] <= exp(-t^2 / (2 sum m^2))``.  Unlike QIM
+    the host magnitudes themselves are the noise, which is the point of the
+    comparison.
+    """
+    groups: dict[str, np.ndarray] = {}
+    for observation in observations:
+        groups[observation.seed] = groups.get(observation.seed, 0) + observation.magnitudes * observation.selected
+    statistic = sum(float((sums * _signs(key, seed, params.k_count)).sum()) for seed, sums in groups.items())
+    energy = sum(float((sums ** 2).sum()) for sums in groups.values())
+    global_log_p = -statistic ** 2 / (2 * energy) if statistic > 0 and energy > 0 else 0.0
+    contour_log_p = []
+    for observation in observations:
+        values = observation.magnitudes[observation.selected]
+        total = float((values * _signs(key, observation.seed, params.k_count)[observation.selected]).sum())
+        norm = float((values ** 2).sum())
+        contour_log_p.append(-total ** 2 / (2 * norm) if total > 0 and norm > 0 else 0.0)
+    minimum_log_p = min(0.0, math.log(len(contour_log_p)) + min(contour_log_p)) if contour_log_p else 0.0
+    combined = min(0.0, math.log(2) + min(global_log_p, minimum_log_p))
+    return {
+        "statistic": statistic, "max_statistic": math.sqrt(energy),
+        "log10_p_value": combined / math.log(10), "p_value": math.exp(combined),
+        "log10_p_global": global_log_p / math.log(10), "log10_p_min_contour": minimum_log_p / math.log(10),
+        "groups": len(groups), "terms": int(sum(o.selected.sum() for o in observations)), "per_contour": [],
     }
 
 
@@ -543,10 +629,45 @@ class _HandleModel(_Model):
         self.basis = _basis(s_of, self.closed, params)
         self.parameters = self.basis.shape[1]
         self.segment_handles = [np.array([handle_of[(s, p)] for p in range(len(segment.points))]) for s, segment in enumerate(self.segments)]
+        # Joins that are smooth (G1) in the source must stay smooth: moving the
+        # handles on each side by slightly different normals otherwise leaves a
+        # small visible kink.  Each entry is (previous point, vertex, next
+        # point, previous is curve, next is curve), as handle indices.
+        self.smooth_joins: list[tuple[int, int, int, bool, bool]] = []
+        pairs = list(zip(range(len(self.segments) - 1), range(1, len(self.segments))))
+        if self.closed and len(self.segments) > 1:
+            pairs.append((len(self.segments) - 1, 0))
+        for i, j in pairs:
+            a, b = self.segments[i], self.segments[j]
+            if a.kind == "A" or b.kind == "A" or (a.kind == "L" and b.kind == "L"):
+                continue
+            arriving, departing = a.points[-1] - a.points[-2], b.points[1] - b.points[0]
+            if abs(arriving) <= 1e-12 or abs(departing) <= 1e-12 or abs(a.points[-1] - b.points[0]) > 1e-9 * (1 + abs(a.points[-1])):
+                continue
+            if abs(math.degrees(np.angle(departing / arriving))) < params.smooth_join_degrees:
+                self.smooth_joins.append((handle_of[(i, len(a.points) - 2)], handle_of[(i, len(a.points) - 1)], handle_of[(j, 1)], a.kind != "L", b.kind != "L"))
 
     def displaced(self, theta: np.ndarray) -> Subpath:
         displacement = self.normals * (self.basis @ theta) * self.mean_radius
         local = self.local + apply_linear_inverse(self.contour.ctm, displacement)
+        for before, vertex, after, curve_before, curve_after in self.smooth_joins:
+            arriving, departing = local[vertex] - local[before], local[after] - local[vertex]
+            la, lb = abs(arriving), abs(departing)
+            if la <= 1e-12 or lb <= 1e-12:
+                continue
+            if curve_before and curve_after:
+                tangent = arriving / la + departing / lb
+            elif curve_after:  # line then curve: the line fixes the direction
+                tangent = arriving
+            else:
+                tangent = departing
+            if abs(tangent) <= 1e-12:
+                continue
+            tangent /= abs(tangent)
+            if curve_before:
+                local[before] = local[vertex] - la * tangent
+            if curve_after:
+                local[after] = local[vertex] + lb * tangent
         segments = []
         for segment, handles in zip(self.segments, self.segment_handles):
             points = local[handles]
@@ -670,7 +791,11 @@ def _embed_with_seed(contour: Contour, key: bytes, params: SpectralParameters, s
     mask = wanted & realizable
     theta = np.zeros(model.parameters)
     original = model.features(theta)
-    targets = _targets(np.abs(original), offsets, params.delta)
+    if params.scheme == "ss":
+        # Additive spread spectrum: push each magnitude by +-delta/2 along its keyed sign.
+        targets = np.maximum(np.abs(original) + 0.5 * params.delta * np.where(offsets > 0.5, 1.0, -1.0), 0.0)
+    else:
+        targets = _targets(np.abs(original), offsets, params.delta)
     error = np.zeros(len(original))
     if mask.any():
         theta, error = _solve(model, theta, targets, mask, params)

@@ -36,8 +36,9 @@ MASTER = hashlib.sha256(b"contourmark-evaluation-master-key-v1").digest()
 _NUMBER = re.compile(rb"[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[Ee][-+]?\d+)?")
 
 
-def item_key(path: str, label: str = "owner") -> bytes:
-    return hashlib.sha256(MASTER + f"|{label}|{path}".encode()).digest()
+def item_key(path: str, label: str = "owner", shared: bool = False) -> bytes:
+    """Per-asset keys by default; ``shared`` models one production key for all assets."""
+    return hashlib.sha256(MASTER + (f"|{label}|shared" if shared else f"|{label}|{path}").encode()).digest()
 
 
 # ---------------------------------------------------------------------------
@@ -121,9 +122,10 @@ def run_item(task: tuple[dict, list[bytes], dict]) -> dict:
     item, others, config = task
     params = SpectralParameters(**config.get("params", {}))
     source = (ROOT / item["path"]).read_bytes()
-    key = item_key(item["path"])
-    wrong = item_key(item["path"], "wrong")
-    suite = attack_lib.standard_suite(others)
+    shared = config.get("key_mode") == "shared"
+    key = item_key(item["path"], shared=shared)
+    wrong = item_key(item["path"], "wrong", shared=shared)
+    suite = attack_lib.extended_suite(others) if config.get("suite") == "extended" else attack_lib.standard_suite(others)
     if config.get("attacks"):
         suite = {name: suite[name] for name in config["attacks"]}
     record: dict = {"path": item["path"], "source": item["source"], "style": item["style"], "bytes": len(source), "methods": {}}
@@ -204,6 +206,8 @@ def main() -> None:
     parser.add_argument("--attacks", nargs="*")
     parser.add_argument("--params", type=json.loads, default={})
     parser.add_argument("--visibility", choices=["strict", "render"], default="strict")
+    parser.add_argument("--key-mode", choices=["per-asset", "shared"], default="per-asset", help="shared: one key for every asset, as in deployment")
+    parser.add_argument("--suite", choices=["standard", "extended"], default="standard")
     args = parser.parse_args()
     items = json.loads(args.corpus.read_text())["items"]
     if args.limit:
@@ -214,7 +218,7 @@ def main() -> None:
     done = set()
     if args.output.exists():
         done = {json.loads(line)["path"] for line in args.output.read_text().splitlines() if line.strip()}
-    config = {"methods": args.methods, "attacks": args.attacks, "params": args.params, "visibility": args.visibility}
+    config = {"methods": args.methods, "attacks": args.attacks, "params": args.params, "visibility": args.visibility, "key_mode": args.key_mode, "suite": args.suite}
     tasks = []
     for index, item in enumerate(items):
         if item["path"] in done:

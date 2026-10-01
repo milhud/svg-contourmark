@@ -12,7 +12,7 @@
 \maketitle
 
 \begin{abstract}
-Language models and specialist generators now emit SVG code at scale, and regulation (EU AI Act Art.~50) asks providers to mark AI-generated content in a machine-readable way. Current practice for SVG is signed metadata, which the default configuration of the dominant optimizer (SVGO) deletes. Token-level LLM watermarks fail for the same reason: SVG toolchains rewrite nearly every token while preserving the picture. We present \system{}, a blind watermark carried by the drawn geometry itself. Each contour is resampled by arc length. The magnitudes of a band of Fourier (or cosine) coefficients of its normalized radial function are invariant to command syntax, segment subdivision, path merging and reordering, start point, direction, and similarity transforms. A keyed dither-modulation quantizer moves these magnitudes onto a secret lattice. A representation-free capacity model lets the detector decide, from the observed geometry alone, which coefficients a contour could have carried. Detection needs only the SVG and the key. It reports a p-value that is a valid upper bound over the key's randomness for any SVG chosen independently of the key, computed exactly by an exponentially tilted convolution rather than fitted to data. On 900 icons, logos, and emoji from nine open-license sets, 83\% of marked assets are detected at $p\le10^{-6}$ from the SVG and key alone. The misses are mostly icons with at most one curved contour. Of the detectable assets, 94\% survive default SVGO, 100\% survive Scour, and 100\% survive rotation, scaling, mirroring, reordering, subdivision, and path merging or splitting. Metadata, XML-comment, coordinate-LSB, Bézier-split, and vertex Fourier-descriptor baselines all fail under SVGO, rounding, or similarity transforms. Over 268{,}200 key-randomized null tests the empirical false-positive rate tracks the bound from $10^{-1}$ to $10^{-5}$. On SVGs written by a local LLM, 24 of 40 files use clipping; detection is 78\% when clipped contours are excluded and 90\% when a renderer resolves their visibility. We report the failure boundary as prominently as the successes: noise at the mark's amplitude, aspect-ratio stretching, stroke outlining, rasterize-and-retrace, an informed re-quantization attacker, and icons made only of straight lines.
+Language models and specialist generators now emit SVG code at scale, and regulation (EU AI Act Art.~50) asks providers to mark AI-generated content in a machine-readable way. Current practice for SVG is signed metadata, which the default configuration of the dominant optimizer (SVGO) deletes. Token-level LLM watermarks fail for the same reason: SVG toolchains rewrite nearly every token while preserving the picture. We present \system{}, a blind watermark carried by the drawn geometry itself. Each contour is resampled by arc length. The magnitudes of a band of Fourier (or cosine) coefficients of its normalized radial function are invariant to command syntax, segment subdivision, path merging and reordering, start point, direction, and similarity transforms. A keyed dither-modulation quantizer moves these magnitudes onto a secret lattice. A representation-free capacity model lets the detector decide, from the observed geometry alone, which coefficients a contour could have carried. Detection needs only the SVG and the key. It reports a p-value that is a valid upper bound over the key's randomness for any SVG chosen independently of the key, computed exactly by an exponentially tilted convolution rather than fitted to data. On 900 icons, logos, and emoji from nine open-license sets, 84\% of marked assets are detected at $p\le10^{-6}$ from the SVG and key alone. The misses are mostly icons with at most one curved contour. Of the detectable assets, 94\% survive default SVGO, 100\% survive Scour, and 100\% survive rotation, scaling, mirroring, reordering, subdivision, and path merging or splitting. Metadata, XML-comment, coordinate-LSB, Bézier-split, and vertex Fourier-descriptor baselines all fail under SVGO, rounding, or similarity transforms. Over 268{,}200 key-randomized null tests the empirical false-positive rate tracks the bound from $10^{-1}$ to $10^{-5}$. On SVGs written by a local LLM, 24 of 40 files use clipping; detection is 78\% when clipped contours are excluded and 93\% when a renderer resolves their visibility. We report the failure boundary as prominently as the successes: noise at the mark's amplitude, aspect-ratio stretching, stroke outlining, rasterize-and-retrace, an informed re-quantization attacker, and icons made only of straight lines.
 \end{abstract}
 
 \section{Introduction}
@@ -68,11 +68,10 @@ Each contour receives a seed $s(c)$: a coarse, similarity-invariant shape class 
 \subsection{Detection and exact calibration}
 \label{sec:detect}
 Contours sharing a seed share dithers, so they are pooled. For group $g$ and coefficient $k$, let
-\[
-A_{g,k}=\sum_{c\in g}\mathbb 1[k\text{ selected for }c]\,e^{2\pi i m_{c,k}/\Delta},
-\qquad
-T=\sum_{g,k}\operatorname{Re}\big(A_{g,k}e^{-2\pi i d_{g,k}}\big).
-\]
+\begin{align*}
+A_{g,k}&=\sum_{c\in g}\mathbb 1[k\text{ selected for }c]\,e^{2\pi i m_{c,k}/\Delta},\\
+T&=\sum_{g,k}\operatorname{Re}\big(A_{g,k}e^{-2\pi i d_{g,k}}\big).
+\end{align*}
 \begin{theorem}
 Let an SVG be fixed independently of $K$, and model the PRF as random. Then $T\stackrel{d}{=}\sum_{g,k}|A_{g,k}|\cos(2\pi U_{g,k})$ with $U_{g,k}$ i.i.d.\ uniform. Hence any upper bound $\bar P(t)\ge\Pr[\sum w_i\cos 2\pi U_i\ge t]$ with $w=|A|$ yields a p-value satisfying $\Pr[\bar P(T)\le\alpha]\le\alpha$.
 \end{theorem}
@@ -99,7 +98,7 @@ The spectral method above changes a finished SVG. Two further mechanisms act whi
 \subsection{Setup}
 \textbf{Corpus.} 900 test assets, 100 from each of nine open-license sets: Lucide and Tabler (stroked line icons); Bootstrap, Material, Font Awesome, Remix, and Octicons (filled icons); Simple Icons (logos); and OpenMoji (colour illustrations). A disjoint 270-asset development split, separated by filename hash, was used for all tuning. Parameters were frozen before any test-split run. We also use 40 SVGs written by a local LLM (Qwen~3.5 4B through Ollama) from icon prompts.
 
-\textbf{Methods.} We compare \system{} (defaults $\Delta{=}0.004$, $k{=}2..9$) with: an XML comment; a \texttt{<metadata>} element as a placeholder for metadata-borne credentials (it is not a C2PA implementation); geometry-aware coordinate-parity LSB (64 chips at $10^{-3}$); Bézier-split steganography; and our adaptation of a vertex Fourier-descriptor magnitude watermark with correlation detection (after Solachidis/Doncel/Pitas; not verified against the authors' equations). The detection threshold for all methods is $p\le10^{-6}$. Baselines run at fixed default strengths and are \emph{not} distortion-matched to \system{}: their median PSNR at 1024\,px is 54--83\,dB against 25\,dB for \system{}. The comparison therefore shows which carriers survive which transformations. It does not establish superiority at equal visual cost.
+\textbf{Methods.} We compare \system{} (defaults $\Delta{=}0.004$, $k{=}2..9$) with: an XML comment; a \texttt{<metadata>} element as a placeholder for metadata-borne credentials (it is not a C2PA implementation); geometry-aware coordinate-parity LSB (64 chips at $10^{-3}$); Bézier-split steganography; and our adaptation of a vertex Fourier-descriptor magnitude watermark with correlation detection (after Solachidis/Doncel/Pitas; not verified against the authors' equations). The detection threshold for all methods is $p\le10^{-6}$. In the main table baselines run at fixed default strengths and are \emph{not} distortion-matched to \system{}: their median PSNR at 1024\,px is 54--83\,dB against 25\,dB for \system{}. That table shows which carriers survive which transformations; the matched-distortion comparison is reported separately below.
 
 \textbf{Attacks (36, all keyless):}
 \begin{itemize}
@@ -115,23 +114,23 @@ The spectral method above changes a finished SVG. Two further mechanisms act whi
 \end{itemize}
 
 \subsection{Detection and robustness}
-\system{} detects 83\% of marked test assets (748/900) with no attack. Across sources this ranges from 69\% (Lucide) and 70\% (Tabler), which are mostly straight strokes, to 92\% (OpenMoji). Among the 152 misses:
+\system{} detects 84\% of marked test assets (755/900) with no attack. Across sources this ranges from 70\% (Lucide) and 71\% (Tabler), which are mostly straight strokes, to 93\% (OpenMoji). Among the 145 misses:
 \begin{itemize}
-\item 58 have at most one markable contour;
-\item the median miss still reaches $p=1.7\times10^{-4}$;
-\item 92 reach $p\le10^{-3}$.
+\item 57 have at most one markable contour;
+\item the median miss still reaches $p=4.8\times10^{-4}$;
+\item 83 reach $p\le10^{-3}$.
 \end{itemize}
 Capacity, not robustness, limits coverage. The embedder reports the attainable $p$ in advance, so a provider knows when an asset cannot be marked.
 
 Conditional on clean detection, survival rates with 95\% Wilson intervals are:
 \begin{itemize}
-\item SVGO default 94.3\% [92.3, 95.7]; SVGO multipass 94.4\%;
-\item Scour 100\% [99.5, 100]; picosvg 78.3\%;
-\item 2-decimal rounding 77.4\%;
+\item SVGO default 93.8\% [91.8, 95.3]; SVGO multipass 93.9\%;
+\item Scour 100\% [99.5, 100]; picosvg 78.5\%;
+\item 2-decimal rounding 75.8\%;
 \item all seven similarity transforms 100\%;
-\item reorder, reverse, subdivide, merge, split 100\%; restart 95.7\%;
-\item deleting 25\% of contours 97.1\%; removing contours in one half 82.4\%; composition 89.2\%;
-\item light polyline flattening (0.05\% tolerance) 83.4\%.
+\item reorder, reverse, subdivide, merge, split 100\%; restart 96.2\%;
+\item deleting 25\% of contours 96.8\%; removing contours in one half 82.9\%; composition 89.1\%;
+\item light polyline flattening (0.05\% tolerance) 82.3\%.
 \end{itemize}
 Figure~\ref{fig:attacks} compares attack families.
 
@@ -139,12 +138,21 @@ The failure boundary is equally clear:
 \begin{itemize}
 \item 1-decimal rounding: 14.8\%;
 \item SVGO precision 1: 8.7\%;
-\item handle noise at 0.1\% of the diagonal: 0.3\%;
+\item handle noise at 0.1\% of the diagonal: 0.5\%;
 \item the $1.2{:}1$ stretch: 0\%, since the carrier is only similarity-invariant;
-\item rasterize-and-retrace: 9.2\% at 512\,px and 23.9\% at 1024\,px.
+\item rasterize-and-retrace: 10.6\% at 512\,px and 23.6\% at 1024\,px.
 \end{itemize}
 
-\textbf{Baselines.} Both metadata-style marks are removed by default SVGO and picosvg. Coordinate LSB detects 80\% clean and 54\% after SVGO, which leaves the chosen coordinates on its $10^{-3}$ grid. It detects 0\% after 2-decimal rounding, rotation, down-scaling, subdivision, or composition. It partly survives transformations that keep coordinates on its grid: 70\% after $\times3$ scaling and mirroring, 34\% after translation, and 80\% under an unflattened group transform. Bézier splitting detects only 9\% clean at $10^{-6}$ (icons have few cubics) and 0\% after SVGO. Our vertex Fourier-descriptor adaptation detects 0\% even without attack, at a much smaller distortion (83\,dB) than \system{}. Icons have tens of vertices, against the hundreds its authors recommend. We did not sweep its strength or run a positive control on long polylines, so this result shows that the adaptation has no operating point at icon scale under our settings; it is not a reproduction failure of the original method.
+\textbf{Baselines.} Both metadata-style marks are removed by default SVGO and picosvg. Coordinate LSB detects 80\% clean and 54\% after SVGO, which leaves the chosen coordinates on its $10^{-3}$ grid. It detects 0\% after 2-decimal rounding, rotation, down-scaling, subdivision, or composition. It partly survives transformations that keep coordinates on its grid: 70\% after $\times3$ scaling and mirroring, 34\% after translation, and 80\% under an unflattened group transform. Bézier splitting detects only 9\% clean at $10^{-6}$ (icons have few cubics) and 0\% after SVGO. Our vertex Fourier-descriptor adaptation detects 0\% even without attack at its default strength.
+
+\textbf{Matched distortion.} Because those defaults differ in how far they move the drawing, we swept every method's strength on 54 development icons and measured the same quantity for all: the 95th-percentile symmetric boundary distance, as a fraction of the diagonal.
+\begin{itemize}
+\item At about 0.16\%, \system{} ($\Delta{=}0.004$) detects 91\% clean, 85\% after SVGO, 70\% after 2-decimal rounding, and 91\% after rotation and subdivision.
+\item Coordinate LSB at its closest setting (0.03\%, quantum $10^{-2}$) detects 78\%, 69\%, 69\%, and 0\% after rotation or subdivision. Raising it to 0.35\% does not change the last two.
+\item The vertex Fourier-descriptor adaptation detects 0\% on icons at every strength up to 1.3\% distortion. On 600-vertex broadband polylines, the regime it was designed for, it detects 33\% at its highest strength, and those detections survive rotation. It is a working method without an operating point at icon scale.
+\item An ablation that keeps our arc-length carrier but replaces QIM with additive spread spectrum detects 0\% at every strength, on icons and on long polylines. Host interference, which QIM removes, is what defeats correlation detectors here.
+\end{itemize}
+These sweeps use the development split and four transformations; they are not yet a test-split result.
 
 \begin{figure}[t]
 \centering
@@ -174,16 +182,17 @@ The bound holds or is met within sampling noise at every level. The smallest nul
 \subsection{Fidelity, size, and cost}
 \textbf{Distortion.}
 \begin{itemize}
-\item The median maximum curve displacement is 0.31\% of the drawing diagonal (95th percentile 0.77\%): about 0.3\,px when a full-canvas icon is rendered at 64\,px, 1.1\,px at 256\,px, and 4.5\,px at 1024\,px.
-\item Median SSIM is 0.985 at 256\,px and 0.980 at 1024\,px; PSNR is 28.9 and 25.4\,dB.
+\item The median maximum curve displacement is 0.30\% of the drawing diagonal (95th percentile 0.68\%): about 0.3\,px when a full-canvas icon is rendered at 64\,px, 1.1\,px at 256\,px, and 4.4\,px at 1024\,px.
+\item Median SSIM is 0.985 at 256\,px and 0.979 at 1024\,px; PSNR is 28.9 and 25.3\,dB.
 \item PSNR is dominated by sub-pixel edge shifts on high-contrast line art. Side-by-side renders show no visible change at typical icon sizes.
 \item A perceptual study remains necessary before making an imperceptibility claim for large renders.
 \end{itemize}
 
 \textbf{Size and time.}
 \begin{itemize}
-\item Marked files are $1.8\times$ the original after SVGO, a median of 386 added bytes. The cost comes from curve subdivision and higher-precision coordinates.
-\item Embedding takes 0.07\,s and detection 0.008\,s (medians, one core).
+\item Marked files are $1.9\times$ the original after SVGO, a median of 483 added bytes. The cost comes from curve subdivision and higher-precision coordinates.
+\item Joins that are smooth in the source stay smooth: the embedder constrains the two handles at such a join to a common tangent. Without this constraint marking introduced soft kinks (0.5--12$^\circ$) at up to half of the joins.
+\item Embedding takes 0.08\,s and detection 0.008\,s (medians, one core).
 \end{itemize}
 
 \textbf{Operating curve.} On the development split, the lattice step trades these costs directly:
@@ -204,10 +213,10 @@ $\Delta$ & Max shift & PSNR & SVGO & 2\,dp & 0.1\% noise\\
 Larger bands ($k{=}2..13$) and lower gain thresholds changed clean coverage by at most 1.1 points while increasing size, so the defaults use the smaller band.
 
 \subsection{LLM-written SVG}
-On 40 SVGs written by Qwen~3.5 4B, 24 use \texttt{clip-path}. Under the strict visibility rule, which neither marks nor scores clipped contours, \system{} detects 78\% clean, 78\% after SVGO, and 62\% after 2-decimal rounding. With renderer-assisted visibility for both embedding and detection it detects 90\% clean, 90\% after SVGO, and 78\% after rounding. An earlier version of the detector scored clipped contours without checking that they are drawn and reported 100\%; that number counted evidence that could be hidden, and we withdraw it. Byte overhead after SVGO is larger than for icons because these files use basic shapes, which are rewritten as paths. Rasterize-and-retrace removes the mark from these overlapping colour drawings.
+On 40 SVGs written by Qwen~3.5 4B, 24 use \texttt{clip-path}. Under the strict visibility rule, which neither marks nor scores clipped contours, \system{} detects 78\% clean, 78\% after SVGO, and 62\% after 2-decimal rounding. With renderer-assisted visibility for both embedding and detection it detects 93\% clean, 93\% after SVGO, and 78\% after rounding. An earlier version of the detector scored clipped contours without checking that they are drawn and reported 100\%; that number counted evidence that could be hidden, and we withdraw it. Byte overhead after SVGO is larger than for icons because these files use basic shapes, which are rewritten as paths. Rasterize-and-retrace removes the mark from these overlapping colour drawings.
 
 \subsection{Informed attacker (A2)}
-An attacker who knows the algorithm and $\Delta$ but not $K$ re-embeds with a random key. On 229 detectable assets (30 per source) this removes the mark from 98.3\% of them (225). The attack's distortion (median PSNR 26.6\,dB at 1024\,px) equals that of embedding (25.4\,dB). With a doubled step the removal rate is 95.2\% at 22.7\,dB. Plain QIM with public $\Delta$ offers no margin against this attacker. Spread-transform dither modulation over keyed projections of the band is a candidate remedy that we have not implemented or measured. We scope our claims to A0 and A1 transformations.
+An attacker who knows the algorithm and $\Delta$ but not $K$ re-embeds with a random key. On 232 detectable assets (30 per source) this removes the mark from 98.3\% of them (228). The attack's distortion (median PSNR 26.4\,dB at 1024\,px) equals that of embedding (25.2\,dB). With a doubled step the removal rate is 94.4\% at 22.4\,dB. Plain QIM with public $\Delta$ offers no margin against this attacker. Spread-transform dither modulation over keyed projections of the band is a candidate remedy that we have not implemented or measured. We scope our claims to A0 and A1 transformations.
 
 \subsection{Null for the geometric sampler's detector}
 The \texttt{geosample} detector (\S\ref{sec:gen}) was scored on the same 900 unmarked human icons under 300 keys each (267{,}000 tests over 890 documents with descriptors, median 11 distinct descriptors). Observed rates were 6.3\% at $10^{-1}$, 0.68\% at $10^{-2}$, 0.072\% at $10^{-3}$, $7.9\times10^{-5}$ at $10^{-4}$, and $3.7\times10^{-6}$ (one hit) at $10^{-5}$. With this many trials the test cannot confirm rates near $10^{-6}$ empirically; that level rests on the Gamma null.
@@ -220,7 +229,7 @@ The \texttt{geosample} detector (\S\ref{sec:gen}) was scored on the same 900 unm
 \item \textbf{Informed removal.} Re-quantization with a random key removes the mark at embedding-level distortion (\S5.6).
 \item \textbf{Seed classes.} Common shapes such as circles share seed classes across assets. An attacker holding many marked circles could estimate their lattice. Per-provider key rotation limits this; we have not measured it.
 \item \textbf{Evidence, not authorship.} A positive test shows that geometry marked with $K$ is present, including after copy-and-paste into other work. Keys should be committed with timestamps if results are used as evidence.
-\item \textbf{Fidelity.} Distortion is measured with pixel metrics, and a perceptual study is still needed. Byte overhead ($1.8\times$ after SVGO) matters for icon sprites.
+\item \textbf{Fidelity.} Distortion is measured with pixel metrics, and a perceptual study is still needed. Byte overhead ($1.9\times$ after SVGO) matters for icon sprites.
 \end{itemize}
 
 \section{Related work}

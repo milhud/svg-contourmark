@@ -49,6 +49,13 @@ detect(svg, key)["p_value"]
 
 For `model.generate(...)`, pass `GeoWatermarkLogitsProcessor(grammar, GeoWatermark(key), prompt_length, top_p=...)` with `do_sample=True`. Truncation is configured on the processor. See [docs/inference-watermark.md](docs/inference-watermark.md) for definitions, the distribution-preservation proof, the adapter contract, and limits: non-uniform scaling, retracing, low-entropy decoding, and text LLMs needing a number-level adapter.
 
+## Where to go next
+
+- **Run the GPU experiment in Colab:** [colab/README.md](colab/README.md) and `colab/iconshop_geosample.ipynb` (one GPU, resumable, results on Drive).
+- **Run it on a SLURM cluster:** [hpc/README.md](hpc/README.md).
+- **Explore on CPU:** [experiments/README.md](experiments/README.md) lists every harness and what question it answers; `experiments/smoke_all.sh` checks all of them in about two minutes.
+- **State of the project and open problems:** [HANDOFF.md](HANDOFF.md) and the independent review in `docs/review-2026-09-30/`.
+
 ## Install and run
 
 ```sh

@@ -48,6 +48,7 @@ from typing import Sequence
 
 import numpy as np
 from scipy.special import gammaincc
+from scipy.stats import binom
 
 from .geometry import Document, GeometryError, apply_affine, closes, dense_points, evidence_status, load_document
 
@@ -281,17 +282,30 @@ class GeoWatermark:
     output distribution and exists for ablation only.
     """
 
-    def __init__(self, key: bytes, params: GeoParameters | None = None, seed: int | None = None, reuse: str = "mask"):
+    def __init__(self, key: bytes, params: GeoParameters | None = None, seed: int | None = None, reuse: str = "mask",
+                 mode: str = "gumbel", delta: float = 2.0, gamma: float = 0.5):
         if len(key) < 16:
             raise GeometryError("key must contain at least 16 bytes")
         if reuse not in ("mask", "allow"):
             raise GeometryError("reuse must be 'mask' or 'allow'")
+        if mode not in ("gumbel", "bias"):
+            raise GeometryError("mode must be 'gumbel' or 'bias'")
+        if not 0 < gamma < 1 or delta < 0:
+            raise GeometryError("gamma must be in (0, 1) and delta >= 0")
         self.key = key
         self.params = params or GeoParameters()
         self.params.validate()
         self.rng = random.Random(seed)
         self.reuse = reuse
+        # ``bias`` is a green-list sampler (after Kirchenbauer et al.): groups
+        # with keyed uniform above 1 - gamma get +delta on their log mass.  It
+        # deliberately changes the distribution (see ``last_kl``) in exchange
+        # for evidence at low-entropy steps; it is an explicit trade-off, not
+        # a distribution-preserving mode.
+        self.mode, self.delta, self.gamma = mode, delta, gamma
         self.queried: set[tuple] = set()
+        self.last_kl = 0.0  # KL(biased || model) of the most recent bias step, in nats
+        self.last_entropy = 0.0  # entropy of the group masses at the most recent step, in nats
 
     def reset(self) -> None:
         """Start a new drawing: forget which descriptors were looked at."""
@@ -326,6 +340,11 @@ class GeoWatermark:
         groups: dict[object, list[int]] = {}
         for index, descriptor in enumerate(descriptors):
             groups.setdefault(descriptor if descriptor is not None else ("free", index), []).append(index)
+        masses = np.array([float(probabilities[members].sum()) for members in groups.values()])
+        positive = masses[masses > 0]
+        self.last_entropy = float(-(positive * np.log(positive)).sum())
+        if self.mode == "bias":
+            return self._bias(descriptors, probabilities, groups, masses)
         best_score, best_group = -math.inf, None
         keyed_groups = 0
         for label, members in groups.items():
@@ -349,6 +368,20 @@ class GeoWatermark:
         weights = probabilities[best_group]
         index = best_group[self.rng.choices(range(len(best_group)), weights=weights)[0]] if len(best_group) > 1 else best_group[0]
         return Choice(index, descriptors[index], keyed_groups, descriptors[index] is not None)
+
+
+    def _bias(self, descriptors: list[tuple | None], probabilities: np.ndarray, groups: dict, masses: np.ndarray) -> Choice:
+        """Green-list choice: boost keyed-green groups by ``delta`` nats."""
+        labels = list(groups)
+        green = np.array([label[0] != "free" and keyed_uniform(self.key, label) > 1 - self.gamma for label in labels])
+        tilted = masses * np.exp(self.delta * green)
+        tilted = tilted / tilted.sum()
+        mask = (tilted > 0) & (masses > 0)
+        self.last_kl = float((tilted[mask] * np.log(tilted[mask] / masses[mask])).sum())
+        chosen = self.rng.choices(range(len(labels)), weights=tilted)[0]
+        members = groups[labels[chosen]]
+        index = members[self.rng.choices(range(len(members)), weights=probabilities[members])[0]] if len(members) > 1 else members[0]
+        return Choice(index, descriptors[index], int(sum(label[0] != "free" for label in labels)), descriptors[index] is not None)
 
 
 # ---------------------------------------------------------------------------
@@ -383,8 +416,18 @@ def document_descriptors(source: bytes | Document, params: GeoParameters) -> lis
     return out
 
 
-def detect(source: bytes, key: bytes, params: GeoParameters | None = None, visibility: str = "strict") -> dict:
-    """Blind detection; see ``spectral.detect`` for the ``visibility`` modes."""
+def detect(source: bytes, key: bytes, params: GeoParameters | None = None, visibility: str = "strict",
+           statistic: str = "gamma", gamma: float = 0.5) -> dict:
+    """Blind detection; see ``spectral.detect`` for the ``visibility`` modes.
+
+    ``statistic="gamma"`` (default) sums -log(1 - u) over distinct descriptors
+    and suits the Gumbel sampler.  ``statistic="green"`` counts descriptors
+    with u > 1 - gamma (exact binomial null) and suits the bias sampler.  Choose
+    one before looking at the document; reporting the better of the two needs
+    a multiple-testing correction.
+    """
+    if statistic not in ("gamma", "green"):
+        raise GeometryError("statistic must be 'gamma' or 'green'")
     params = params or GeoParameters()
     params.validate()
     if visibility == "render":
@@ -397,16 +440,23 @@ def detect(source: bytes, key: bytes, params: GeoParameters | None = None, visib
     distinct = sorted({d for contour in per_contour for d in contour}, key=str)
     if not distinct:
         return {"p_value": 1.0, "log10_p_value": 0.0, "distinct_vertices": 0, **evidence_status(1.0, params.threshold, document)}
-    scores = {d: -math.log(1 - keyed_uniform(key, d)) for d in distinct}
-    statistic = sum(scores.values())
-    # Distinct descriptors have independent uniform PRF values under H0, so
-    # the sum of -log(1 - u) is exactly Gamma(n, 1).
-    global_p = float(gammaincc(len(distinct), statistic))
+    uniforms = {d: keyed_uniform(key, d) for d in distinct}
+    if statistic == "green":
+        # Distinct descriptors are green independently with probability gamma.
+        scores = {d: float(u > 1 - gamma) for d, u in uniforms.items()}
+        tail = lambda n, total: float(binom.sf(total - 1, n, gamma))  # noqa: E731
+    else:
+        # Distinct descriptors have independent uniform PRF values under H0,
+        # so the sum of -log(1 - u) is exactly Gamma(n, 1).
+        scores = {d: -math.log(1 - u) for d, u in uniforms.items()}
+        tail = lambda n, total: float(gammaincc(n, total))  # noqa: E731
+    statistic_value = sum(scores.values())
+    global_p = tail(len(distinct), statistic_value)
     contour_ps = []
     for contour in per_contour:
         unique = set(contour)
         if unique:
-            contour_ps.append(float(gammaincc(len(unique), sum(scores[d] for d in unique))))
+            contour_ps.append(tail(len(unique), sum(scores[d] for d in unique)))
     minimum = min(1.0, len(contour_ps) * min(contour_ps)) if contour_ps else 1.0
     p_value = min(1.0, 2 * min(global_p, minimum))
     return {
@@ -416,6 +466,7 @@ def detect(source: bytes, key: bytes, params: GeoParameters | None = None, visib
         "global_log10_p": math.log10(max(global_p, 1e-300)),
         "distinct_vertices": len(distinct),
         "vertices": sum(len(c) for c in per_contour),
-        "statistic": statistic,
+        "statistic": statistic_value,
+        "statistic_kind": statistic,
         "null": "Exact Gamma(n,1) null over the key's PRF values for any SVG fixed independently of the key.",
     }

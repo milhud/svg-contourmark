@@ -214,6 +214,31 @@ counterexample: 0.50 and 0.70 with masking; 1.00 and 0.50 with
 * **Diversity.** Masked sampling repeats fewer motifs: median distinct
   descriptors 100 versus 72 under naive reuse.
 
+### 3.4 The bias (green-list) alternative
+
+`GeoWatermark(mode="bias", delta=δ, gamma=γ)` is a second sampler for
+decoders with little entropy. It adds δ nats to the log mass of descriptor
+groups whose keyed uniform exceeds 1 − γ, then samples. It **changes the
+distribution** by design; the sampler reports the per-step KL divergence
+(`last_kl`). Detect with `detect(..., statistic="green")`, an exact binomial
+test on distinct descriptors. Choose the statistic before looking at a
+document: taking the better of the two tests needs a correction.
+
+Measured on the toy generator (`experiments/sampler_lab.py`, 20 drawings per
+cell, detection at p ≤ 1e-6):
+
+| Entropy per keyed step | Descriptors | Preserving | Naive reuse | Bias δ=4 |
+|---|---|---|---|---|
+| about 1 nat | about 25 | 0% | 0% | 0% |
+| about 1 nat | about 100 | 15% | 35% | 65% (0.61 nats shift per step) |
+| about 1.7 nats | about 100 | 70% | 100% | 100% (0.68) |
+| about 2.9 nats | about 100 | 100% | 100% | 100% (0.68) |
+
+IconShop at its default top-p measures about 1 nat per keyed step. At that
+entropy a small icon cannot be marked detectably by any variant here. The
+bias sampler buys power only on larger drawings, and at a distribution shift
+that must be weighed against output quality on a real model.
+
 **Remaining caveats:**
 
 1. This is an idealization. HMAC is a PRF, not a random function, and the

@@ -432,3 +432,86 @@ See the "Not done" list in `RESPONSE.md`. The largest items are:
 * an adaptive-removal study for the inference sampler;
 * subdivision-stable descriptors;
 * a perceptual study.
+
+
+---
+
+## 12. Exploration infrastructure — 1 October 2026 (CPU-only)
+
+Built while GPU access is pending. Everything here runs on CPU in seconds to a
+few minutes. `experiments/README.md` is the index; `experiments/smoke_all.sh`
+exercises every harness in about two minutes.
+
+### New code
+
+| File | What it adds |
+|---|---|
+| `src/contourmark/metrics.py` | Graphics metrics: symmetric boundary distance (units, fraction of diagonal, pixels at icon sizes), silhouette overlap, colour error on white and dark backgrounds, soft kinks at joins, editability. |
+| `src/contourmark/toygen.py` | Toy point-token generator with an entropy knob. |
+| `src/contourmark/geosample.py` | `mode="bias"` green-list sampler with per-step KL; `statistic="green"` detector. |
+| `src/contourmark/spectral.py` | `capacity()` with explicit outcomes; `scheme="ss"` spread-spectrum ablation; smooth joins kept smooth by the embedder. |
+| `src/contourmark/attacks.py` | `extended_suite()`: degree elevation, uneven subdivision, real curve clipping, chained pipelines. |
+| `experiments/sampler_lab.py` | Sampler variants against entropy and drawing size. |
+| `experiments/frontier.py` | Strength sweeps and matched-distortion comparison, with a positive control for the Fourier-descriptor baseline. |
+| `experiments/bootstrap_ci.py` | Asset-level bootstrap intervals and paired method differences. |
+| `experiments/make_study.py` | Perceptual same/different study kit (stimuli, catch trials, self-contained web page). |
+| `experiments/smoke_all.sh` | One command to exercise everything. |
+| `colab/` | Colab runbook written for an AI assistant, a notebook, and a single-GPU run script. |
+| `paper/contourmark.pdf` | The paper now compiles (tectonic). |
+
+`evaluate_blind.py` gained `--key-mode shared`, `--suite extended`, and
+`--visibility render`. The CLI gained `contourmark capacity`.
+
+### What the new harnesses already show
+
+* **Sampler power is entropy-limited.** At about 1 nat per keyed step
+  (IconShop's default), a drawing with about 25 descriptors is undetectable
+  under every sampler variant. With about 100 descriptors the
+  distribution-preserving sampler detects 15%, naive reuse 35%, and a strong
+  bias (δ=4, 0.6 nats of shift per step) 65%. This predicts weak IconShop
+  results at top-p 0.5 and tells us what to look for on the GPU run.
+* **Matched-distortion baselines.** At about 0.16% boundary distance the
+  spectral mark detects 91% clean and 85% after SVGO on 54 dev icons;
+  coordinate LSB detects 78% and 69%, and 0% after rotation or subdivision.
+  The Fourier-descriptor adaptation has no operating point on icons at any
+  strength, and detects 33% on 600-vertex polylines at its highest strength.
+  A spread-spectrum ablation on our own carrier detects 0%, which isolates
+  QIM as the necessary ingredient.
+* **A graphics defect found and fixed.** Marking introduced soft kinks at
+  smooth joins (alarm icon 0 → 38). The embedder now constrains the handles at
+  a smooth join to a common tangent (0 → 0).
+* **The Fourier-descriptor baseline was partly my detector's fault.** A
+  running-median host estimate replaced the linear detrend; the baseline now
+  works on its home ground.
+
+### Tests
+
+113 passing (`tests/test_exploration_infra.py` adds 13).
+
+### Next, in order
+
+1. GPU run of IconShop (Colab or cluster), then decide the paper's story from
+   the measured per-step entropy and detection rates.
+2. Run the perceptual study built by `make_study.py`.
+3. Repeat the frontier on the test split with the frozen operating points, and
+   add the graphics metrics to the main tables.
+4. Spread-transform hardening, measured with `adaptive_attacks.py`.
+5. More decisions per drawing for the inference sampler (second control
+   point, context-separated keys), evaluated in `sampler_lab.py` first.
+
+### Refreshed main numbers (`experiments/results/blind/v3/`)
+
+The smooth-join constraint changed the embedder, so the spectral test run was
+repeated. These supersede §4 and §11 where they differ.
+
+| Quantity | v2 | v3 (current code) |
+|---|---|---|
+| Clean detection, 900 icons | 748 | 755 (84%) |
+| SVGO survival (conditional) | 94.3% | 93.8% [91.8, 95.3] |
+| 2-decimal rounding survival | 77.4% | 75.8% |
+| Size after SVGO | 1.8×, +386 B | 1.9×, +483 B |
+| LLM-written SVG, clean (strict / render) | 78% / 90% | 78% / 93% |
+| Random-key re-embedding removes | 98.3% | 98.3% |
+
+The byte cost rose because keeping joins smooth leaves fewer free handles, so
+more curves are subdivided. All other rates moved by under 2 points.

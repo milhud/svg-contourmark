@@ -432,6 +432,133 @@ def revectorize(size: int = 512) -> Attack:
     return attack
 
 
+def to_cubics(source: bytes) -> bytes:
+    """Exact representation change: every line and quadratic becomes a cubic."""
+    def elevate(subpath: Subpath) -> Subpath:
+        out: list[Segment] = []
+        for segment in subpath.segments:
+            p = segment.points
+            if segment.kind == "L":
+                out.append(Segment("C", np.array([p[0], p[0] + (p[1] - p[0]) / 3, p[0] + 2 * (p[1] - p[0]) / 3, p[1]])))
+            elif segment.kind == "Q":
+                out.append(Segment("C", np.array([p[0], p[0] + 2 * (p[1] - p[0]) / 3, p[2] + 2 * (p[1] - p[2]) / 3, p[2]])))
+            elif segment.kind == "A":
+                out.extend(arc_to_cubics(segment))
+            else:
+                out.append(segment)
+        return Subpath(out, subpath.closed)
+    return map_geometry(source, elevate)
+
+
+def _split_at(segment: Segment, t: float) -> list[Segment]:
+    p = segment.points
+    mix = lambda a, b: a + t * (b - a)  # noqa: E731
+    if segment.kind == "L":
+        m = mix(p[0], p[1])
+        return [Segment("L", np.array([p[0], m])), Segment("L", np.array([m, p[1]]))]
+    if segment.kind == "Q":
+        a, b = mix(p[0], p[1]), mix(p[1], p[2])
+        m = mix(a, b)
+        return [Segment("Q", np.array([p[0], a, m])), Segment("Q", np.array([m, b, p[2]]))]
+    a, b, c = mix(p[0], p[1]), mix(p[1], p[2]), mix(p[2], p[3])
+    d, e = mix(a, b), mix(b, c)
+    m = mix(d, e)
+    return [Segment("C", np.array([p[0], a, d, m])), Segment("C", np.array([m, e, c, p[3]]))]
+
+
+def subdivide_uneven(t: float = 0.3) -> Attack:
+    """Exact de Casteljau split of every segment at an off-centre parameter."""
+    def attack(source: bytes) -> bytes:
+        def split(subpath: Subpath) -> Subpath:
+            out: list[Segment] = []
+            for segment in subpath.segments:
+                for piece in (arc_to_cubics(segment) if segment.kind == "A" else [segment]):
+                    out.extend(_split_at(piece, t))
+            return Subpath(out, subpath.closed)
+        return map_geometry(source, split)
+    return attack
+
+
+def clip_half(source: bytes) -> bytes:
+    """Clip every contour against the left half of the drawing (cuts curves).
+
+    Unlike ``crop_half`` (which keeps or drops whole contours), this cuts
+    through shapes: closed contours are clipped as polygons, open ones as
+    polylines.  Curves are flattened first, so the result is polylines.
+    """
+    root, elements = flatten(source)
+    clouds = [dense_points(s) for subpaths, _ in elements for s in subpaths]
+    if not clouds:
+        return source
+    xs = np.concatenate(clouds).real
+    cut = (xs.min() + xs.max()) / 2
+
+    def cross(a: complex, b: complex) -> complex:
+        return a + (cut - a.real) / (b.real - a.real) * (b - a)
+
+    out = []
+    for subpaths, style in elements:
+        kept: list[Subpath] = []
+        for subpath in subpaths:
+            points = list(dense_points(subpath))
+            closed = subpath.closed or abs(points[-1] - points[0]) < 1e-9
+            if closed:  # Sutherland-Hodgman against x <= cut
+                result: list[complex] = []
+                for a, b in zip(points, points[1:] + points[:1]):
+                    if a.real <= cut:
+                        result.append(a)
+                        if b.real > cut:
+                            result.append(cross(a, b))
+                    elif b.real <= cut:
+                        result.append(cross(a, b))
+                runs = [result] if len(result) >= 3 else []
+            else:
+                runs, current = [], []
+                for a, b in zip(points[:-1], points[1:]):
+                    if a.real <= cut:
+                        current.append(a)
+                        if b.real > cut:
+                            current.append(cross(a, b))
+                            runs.append(current)
+                            current = []
+                    elif b.real <= cut:
+                        current = [cross(a, b)]
+                if points[-1].real <= cut:
+                    current.append(points[-1])
+                if len(current) >= 2:
+                    runs.append(current)
+            for run in runs:
+                segments = [Segment("L", np.array([a, b])) for a, b in zip(run[:-1], run[1:]) if a != b]
+                if segments:
+                    kept.append(Subpath(segments, closed))
+        out.append((kept, style))
+    return assemble(root, out, 4)
+
+
+def chain(*steps: Attack) -> Attack:
+    def attack(source: bytes) -> bytes:
+        for step in steps:
+            source = step(source)
+        return source
+    return attack
+
+
+def extended_suite(corpus_others: list[bytes] | None = None) -> dict[str, Attack]:
+    """The standard suite plus exact rewrites, real clipping and a pipeline.
+
+    Kept separate so results from the standard suite stay comparable.
+    """
+    suite = standard_suite(corpus_others)
+    suite.update({
+        "to_cubics": to_cubics,
+        "subdivide_uneven": subdivide_uneven(0.3),
+        "clip_half": clip_half,
+        "pipeline_svgo_scour_round": chain(svgo(), scour(), round_absolute(2)),
+        "pipeline_picosvg_svgo": chain(picosvg, svgo()),
+    })
+    return suite
+
+
 def standard_suite(corpus_others: list[bytes] | None = None) -> dict[str, Attack]:
     suite: dict[str, Attack] = {
         "identity": lambda source: source,

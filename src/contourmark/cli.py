@@ -14,6 +14,7 @@ from .capacity import assess_svg
 from .geometry import GeometryError
 from .inference import Candidate, GenerationSession, verify_generation
 from .spectral import SpectralParameters
+from .spectral import capacity as spectral_capacity
 from .spectral import detect as spectral_detect
 from .spectral import embed as spectral_embed
 
@@ -76,6 +77,8 @@ def _parser() -> argparse.ArgumentParser:
     detect_cmd.add_argument("--key", type=Path, required=True)
     detect_cmd.add_argument("--delta", type=float, default=SpectralParameters.delta)
     detect_cmd.add_argument("--threshold", type=float, default=SpectralParameters.threshold)
+    capacity_cmd = commands.add_parser("capacity", help="keyless: can this SVG carry a detectable blind mark?")
+    capacity_cmd.add_argument("svg", type=Path)
     assess = commands.add_parser("assess", help="report fail-closed watermark coverage for an SVG")
     assess.add_argument("svg", type=Path)
     return parser
@@ -92,6 +95,10 @@ def main(argv: list[str] | None = None) -> int:
                 stream.write(generate_key().hex() + "\n")
             print(f"Created {args.output} (mode 0600)")
             return 0
+        if args.command == "capacity":
+            result = spectral_capacity(args.svg.read_bytes())
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0 if result["outcome"] == "supported" else 1
         if args.command == "assess":
             result = assess_svg(args.svg.read_bytes())
             print(json.dumps(result, indent=2, sort_keys=True))

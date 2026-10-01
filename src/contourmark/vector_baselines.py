@@ -24,6 +24,7 @@ import math
 import xml.etree.ElementTree as ET
 
 import numpy as np
+from scipy.ndimage import median_filter
 from scipy.stats import binom, norm
 
 from .geometry import SVG_NS, Segment, Subpath, load_document, parse_path_data, serialize_compact, tag
@@ -129,11 +130,12 @@ def _fd_statistic(document_contours: list[tuple[np.ndarray, int]], key: bytes) -
     for magnitudes, n in document_contours:
         band = _band(n)
         signs = 2 * _bits(key, f"fd-vertex|{n}", len(band)) - 1
-        # Multiplicative marks are additive in log magnitude; remove the smooth
-        # host trend (spectral decay) before correlating.
+        # Multiplicative marks are additive in log magnitude.  Estimate the
+        # host spectrum by a running median of neighbouring coefficients (the
+        # keyed signs are zero-mean, so the median is nearly mark-free) and
+        # correlate the residual with the signs.
         values = np.log(magnitudes[band] + 1e-12)
-        design = np.vstack([np.ones(len(band)), np.log(band)]).T
-        values = values - design @ np.linalg.lstsq(design, values, rcond=None)[0]
+        values = values - median_filter(values, size=min(9, len(values) | 1), mode="nearest")
         values = values / (values.std() + 1e-12)
         total += float(values @ signs) / math.sqrt(len(band))
         count += 1
@@ -265,7 +267,7 @@ def _coordinates(subpaths: list[Subpath]) -> list[tuple[Subpath, int, int, int]]
     return out
 
 
-def numeric_lsb_embed(source: bytes, key: bytes, chips: int = 64) -> bytes:
+def numeric_lsb_embed(source: bytes, key: bytes, chips: int = 64, quantum: float = LSB_QUANTUM) -> bytes:
     """Encode keyed bits in the parity of absolute coordinates (not arc flags)."""
     root = _parse(source)
     _shapes_to_paths(root)
@@ -276,20 +278,20 @@ def numeric_lsb_embed(source: bytes, key: bytes, chips: int = 64) -> bytes:
     for (subpath, s, p, axis), bit in zip(slots[:chips], bits):
         value = subpath.segments[s].points[p]
         coordinate = value.real if axis == 0 else value.imag
-        q = round(coordinate / LSB_QUANTUM)
+        q = round(coordinate / quantum)
         if q % 2 != bit:
-            q += 1 if coordinate / LSB_QUANTUM > q else -1
-        new = q * LSB_QUANTUM
+            q += 1 if coordinate / quantum > q else -1
+        new = q * quantum
         point = complex(new, value.imag) if axis == 0 else complex(value.real, new)
         subpath.segments[s].points[p] = point
         if p == len(subpath.segments[s].points) - 1 and s + 1 < len(subpath.segments):
             subpath.segments[s + 1].points[0] = point
     for element, subpaths in parsed:
-        element.set("d", serialize_compact(subpaths, 3))
+        element.set("d", serialize_compact(subpaths, max(0, int(round(-math.log10(quantum))))))
     return _dump(root)
 
 
-def numeric_lsb_detect(source: bytes, key: bytes, chips: int = 64) -> dict:
+def numeric_lsb_detect(source: bytes, key: bytes, chips: int = 64, quantum: float = LSB_QUANTUM) -> dict:
     document = load_document(source, include_shapes=True)
     slots = [slot for contour in document.contours if contour.editable for slot in _coordinates([contour.subpath])]
     count = min(chips, len(slots))
@@ -297,6 +299,6 @@ def numeric_lsb_detect(source: bytes, key: bytes, chips: int = 64) -> dict:
         return {"detected": False, "p_value": 1.0, "log10_p_value": 0.0}
     bits = _bits(key, "numeric-lsb", count)
     values = [(sub.segments[s].points[p].real if axis == 0 else sub.segments[s].points[p].imag) for sub, s, p, axis in slots[:count]]
-    matches = int(sum(round(v / LSB_QUANTUM) % 2 == b for v, b in zip(values, bits)))
+    matches = int(sum(round(v / quantum) % 2 == b for v, b in zip(values, bits)))
     p = float(binom.sf(matches - 1, count, 0.5))
     return {"detected": p <= 1e-6, "p_value": p, "log10_p_value": math.log10(max(p, 1e-300)), "matches": matches, "chips": count}
