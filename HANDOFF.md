@@ -131,6 +131,8 @@ round-trip tests. The full suite is **66 passing** (`.venv/bin/python
 
 ## 4. Results (test split, 900 assets, threshold p <= 1e-6)
 
+> **Superseded in part by §11** (review fixes, 1 Oct 2026). Icon numbers moved by at most 0.2 points. The LLM-SVG and informed-attacker numbers below changed; use §11.
+
 Full tables:
 
 * `experiments/results/blind/test_main.summary.md`
@@ -146,7 +148,8 @@ Full tables:
 | Scour default | 0.83 | 0.76 | 0.09 | 0.00 | 1.00 |
 | picosvg | **0.65** | 0.59 | 0.06 | 0.00 | 0.00 |
 | round to 2 dp | **0.64** | 0.00 | 0.02 | 0.00 | 0.00 |
-| rotate 30° / scale / mirror | **0.83** | 0.00 | 0.09 | 0.00 | 0.00 |
+| rotate 30° / scale ×0.37 | **0.83** | 0.00 | 0.09 | 0.00 | 0.00 |
+| scale ×3 / mirror | **0.83** | 0.70 | 0.09 | 0.00 | 0.00 |
 | subdivide / merge / split | **0.83** | 0–0.40 | ≤0.09 | 0.00 | 0.00 |
 | compose into 2×2 grid | **0.74** | 0.00 | 0.09 | 0.00 | 0.00 |
 | noise 0.1% of diagonal | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
@@ -365,3 +368,67 @@ Bring back `experiments/results/geosample/`, then fill the Results TODO in `docs
 3. A bias-mode (green-list δ) option for low-entropy decoders.
 4. A real OmniSVG run on GPUs.
 5. A quality study: plain vs marked are distributionally identical in theory; check FID/CLIP or a human study.
+
+
+---
+
+## 11. Review response — 1 October 2026
+
+An independent review was committed in `docs/review-2026-09-30/`. Every
+reproduced finding was correct. Details of what changed are in
+`docs/review-2026-09-30/RESPONSE.md`; the short version follows.
+
+### Fixed
+
+* **Inference sampler distribution claim.** Reusing a descriptor's keyed score
+  at every step did not preserve the joint output law. The sampler now uses a
+  keyed score only the first time a descriptor is examined in a drawing
+  (`reuse="mask"`, default). The joint law is preserved, with a proof in
+  `docs/inference-watermark.md` §3.2. This costs power: toy median log10 p
+  −49 → −18.7.
+* **Hidden marked geometry.** Contours under clip/mask/filter/nested viewport
+  and off-canvas geometry are no longer scored. Results carry `status`
+  (`detected` / `not_detected` / `indeterminate`). An optional render-assisted
+  mode (`visibility="render"`, `src/contourmark/visibility.py`) resolves them
+  with librsvg, for both embedding and detection.
+* **Tangent descriptors** now use end derivatives, so degree elevation does
+  not change them.
+* **Spectral embedder** enforces seed stability (retry, else skip) and a
+  displacement cap.
+* **GPU harness:** per-sample RNG, run identity with refusal to resume a
+  mismatched run, strict checkpoint check, shard failures propagate,
+  truncation recorded, error counts in summaries.
+* **Paper and docs** corrected for the over-claims the review listed.
+
+### Numbers that changed (`experiments/results/blind/v2/`)
+
+| Quantity | Before | After |
+|---|---|---|
+| Clean detection, 900 icons | 747 | 748 |
+| LLM-written SVG, clean | 100% | 78% strict / 90% render-assisted |
+| LLM-written SVG, after SVGO | 100% | 78% / 90% |
+| Random-key re-embedding removes | 100% | 98.3% |
+| Embed / detect time (median, pinned threads) | 0.23 s / 0.025 s | 0.07 s / 0.008 s |
+
+The earlier 100% on LLM SVGs counted clipped contours without checking they
+are drawn; 24 of the 40 files use `clip-path`.
+
+### Tests
+
+100 passing. New: `tests/test_review_regressions.py` (10 tests).
+
+### Withdrawn
+
+The 4-prompt IconShop pilot (log10 p −3.5 to −4.7) used the biased sampler.
+Real-model numbers for the corrected sampler must come from the cluster run
+(`hpc/README.md`). Expect lower power at IconShop's default top-p.
+
+### Still open
+
+See the "Not done" list in `RESPONSE.md`. The largest items are:
+
+* real IconShop and OmniSVG results with the corrected sampler;
+* distortion-matched baselines;
+* an adaptive-removal study for the inference sampler;
+* subdivision-stable descriptors;
+* a perceptual study.

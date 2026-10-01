@@ -3,7 +3,7 @@
 Research prototype for **blind, representation-invariant watermarking of SVG geometry**. The target use is marking AI-generated SVG before release and detecting it later, after the file has passed through real toolchains.
 
 **Primary method (`mark` / `detect`, `src/contourmark/spectral.py`).**
-- **Works after generation, with any generator.** An LLM writing SVG code, OmniSVG, StarVector, a vectorizer, or a human designer. It needs no model access.
+- **Works after generation.** It needs no model access, so it applies to output from an LLM writing SVG code, OmniSVG, StarVector, a vectorizer, or a human designer. It needs path geometry with curved contours: text, raster images and straight-line drawings carry nothing.
 - **Embedding:**
   1. Resample each visible contour by arc length.
   2. Compute its normalized radial function (distance to centroid over mean distance).
@@ -26,7 +26,7 @@ Legacy modes (`sample-blind`, `embed`/`verify`) are kept for comparison. See [li
 A second, distortion-free mode for generators whose decoder you control. It works like text watermarking (SynthID / Gumbel sampling), but keys a **geometric** quantity instead of token IDs, so detection survives SVGO, Scour, rounding, reordering, reversal, and similarity transforms.
 
 - **Keyed choices.** At each line/curve endpoint, the model's candidate tokens are grouped by the corner (vertex) descriptor they create: interior angle, arm-length ratio, and summed bulge. At each curve's first control point, they are grouped by the tangent descriptor at that corner.
-- **Distribution preserved.** A keyed Gumbel-max draw over groups, followed by ordinary sampling within the group, leaves the model's next-token distribution unchanged.
+- **Distribution preserved, at the sequence level.** A keyed Gumbel-max draw over descriptor groups, then ordinary sampling within the group. A descriptor's keyed score is used only the first time it is looked at in a drawing; later looks use fresh randomness. That rule is what makes the joint output law equal the model's (random-PRF idealization); naive reuse does not, and costs less power.
 - **Detection** needs only the final SVG and the key. It uses an exact Gamma null over distinct descriptors (`contourmark.geosample.detect`).
 - **Models.** Any point-token SVG model via a small grammar adapter (`contourmark.point_token_models`):
   - IconShop: run here with the public checkpoint.
@@ -55,7 +55,7 @@ For `model.generate(...)`, pass `GeoWatermarkLogitsProcessor(grammar, GeoWaterma
 python3 -m venv .venv
 .venv/bin/python -m pip install -e '.[test]'
 .venv/bin/contourmark keygen owner.key
-.venv/bin/contourmark mark icon.svg icon.marked.svg --key owner.key      # blind mark, any SVG
+.venv/bin/contourmark mark icon.svg icon.marked.svg --key owner.key      # blind mark, path-based SVG
 .venv/bin/contourmark detect icon.marked.svg --key owner.key             # needs only SVG + key
 .venv/bin/python examples/make_proposals.py > proposals.json
 .venv/bin/contourmark sample proposals.json drawing.svg --key owner.key --manifest drawing.wm.json

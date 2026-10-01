@@ -45,6 +45,7 @@ from .geometry import (
     apply_affine,
     apply_linear_inverse,
     dense_points,
+    evidence_status,
     load_document,
     parse_path_data,
     arc_to_cubics,
@@ -70,6 +71,7 @@ class SpectralParameters:
     min_gain: float = 0.4  # orthogonal Jacobian gain for a coefficient to be carried
     embed_margin: float = 0.625  # embedder marks coefficients with gain >= margin * min_gain
     max_densify: int = 4  # rounds of curved-segment splitting allowed while embedding
+    max_relative_displacement: float = 0.08  # of the contour's mean radius; larger moves are rolled back
     rounding_fraction: float = 0.05  # serialization step as a fraction of delta * contour radius
     realize_gain: float = 0.25  # handle-model gain needed before a coefficient is embedded
     threshold: float = 1e-6  # detection p-value threshold
@@ -169,7 +171,7 @@ def observe(document: Document, params: SpectralParameters) -> list[Observation]
     scale = document.scale()
     observations = []
     for index, contour in enumerate(document.contours):
-        if not contour.visible:
+        if not contour.scorable:
             continue
         samples, length = contour_samples(contour, params.samples)
         if scale <= 0 or length < params.min_relative_length * scale:
@@ -325,16 +327,27 @@ def score(observations: list[Observation], key: bytes, params: SpectralParameter
     }
 
 
-def detect(source: bytes, key: bytes, params: SpectralParameters | None = None) -> dict:
+def detect(source: bytes, key: bytes, params: SpectralParameters | None = None, visibility: str = "strict") -> dict:
+    """Blind detection.
+
+    ``visibility="strict"`` scores only contours whose visibility the parser
+    fully determines; ``"render"`` additionally asks librsvg whether clipped,
+    masked, filtered or CSS-styled contours actually contribute pixels.
+    """
     params = params or SpectralParameters()
     params.validate()
     if len(key) < 16:
         raise GeometryError("key must contain at least 16 bytes")
-    document = load_document(source)
+    if visibility == "render":
+        from .visibility import resolve_by_rendering
+
+        document = resolve_by_rendering(source)
+    else:
+        document = load_document(source)
     observations = observe(document, params)
     result = score(observations, key, params)
+    result.update(evidence_status(result["p_value"], params.threshold, document))
     result.update({
-        "detected": result["p_value"] <= params.threshold,
         "threshold": params.threshold,
         "usable_contours": len(observations),
         "distinct_seeds": len({o.seed for o in observations}),
@@ -616,8 +629,34 @@ def _curve_distance(points: np.ndarray, reference: np.ndarray) -> np.ndarray:
 
 
 def _embed_contour(contour: Contour, key: bytes, params: SpectralParameters) -> tuple[Subpath, dict]:
+    """Embed one contour, enforcing seed stability and a displacement cap.
+
+    The verifier derives the dither seed from the *marked* contour.  If
+    embedding moves the contour into another seed class, re-embed with that
+    class's dithers (a fixed-point search); if no stable seed is found, or
+    the displacement exceeds ``max_relative_displacement``, leave the contour
+    untouched and say so rather than ship a mark the verifier cannot read.
+    """
     samples, _ = contour_samples(contour, params.samples)
     seed = descriptor(samples, contour.closed, params.seed_bin)
+    subpath, info = contour.subpath, {}
+    for attempt in range(3):
+        subpath, info = _embed_with_seed(contour, key, params, seed)
+        if info["seed_stable"]:
+            break
+        seed = info["marked_seed"]
+    info["seed_attempts"] = attempt + 1
+    if not info["seed_stable"]:
+        info["status"] = "skipped_unstable_seed"
+    elif info["curve_max_displacement"] > params.max_relative_displacement * info["mean_radius"]:
+        info["status"] = "skipped_distortion"
+    else:
+        info["status"] = "marked"
+    return (subpath if info["status"] == "marked" else contour.subpath), info
+
+
+def _embed_with_seed(contour: Contour, key: bytes, params: SpectralParameters, seed: str) -> tuple[Subpath, dict]:
+    samples, _ = contour_samples(contour, params.samples)
     offsets = dithers(key, seed, params.k_count)
     geometric = _GeometricModel(samples, contour.closed, params)
     wanted = geometric.selection(params.min_gain * params.embed_margin)
@@ -643,9 +682,11 @@ def _embed_contour(contour: Contour, key: bytes, params: SpectralParameters) -> 
     alignment = np.cos(2 * np.pi * (marked_values / params.delta - offsets))
     displacement = np.abs(model.normals * (model.basis @ theta)) * model.mean_radius
     curve_shift = _curve_distance(marked_samples, contour_samples(contour, 4 * params.samples)[0])
+    marked_seed = descriptor(marked_samples, contour.closed, params.seed_bin)
     return subpath, {
         "seed": seed,
-        "seed_stable": descriptor(marked_samples, contour.closed, params.seed_bin) == seed,
+        "marked_seed": marked_seed,
+        "seed_stable": marked_seed == seed,
         "embedded_coefficients": int(mask.sum()),
         "unrealized_coefficients": int((wanted & ~realizable).sum()),
         "densify_rounds": rounds,
@@ -664,7 +705,7 @@ def _decimals(quantum: float) -> int:
     return int(min(8, max(1, math.ceil(-math.log10(max(quantum, 1e-12)) - 1e-9))))
 
 
-def embed(source: bytes, key: bytes, params: SpectralParameters | None = None, convert_shapes: bool = True) -> tuple[bytes, dict]:
+def embed(source: bytes, key: bytes, params: SpectralParameters | None = None, convert_shapes: bool = True, visibility: str = "strict") -> tuple[bytes, dict]:
     """Embed a blind geometric watermark; returns (svg, public report).
 
     The report contains no secret material and is not needed for detection.
@@ -683,7 +724,14 @@ def embed(source: bytes, key: bytes, params: SpectralParameters | None = None, c
     ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
     if convert_shapes:
         _shapes_to_paths(root)
-    document = load_document(root)
+    if visibility == "render":
+        # Mark what a renderer shows, so contours under benign clips carry
+        # the mark that render-assisted detection will look for.
+        from .visibility import resolve_by_rendering
+
+        document = resolve_by_rendering(root)
+    else:
+        document = load_document(root)
     scale = document.scale()
     if scale <= 0:
         raise GeometryError("no drawable geometry")
@@ -697,6 +745,9 @@ def embed(source: bytes, key: bytes, params: SpectralParameters | None = None, c
         try:
             subpath, info = _embed_contour(contour, key, params)
         except (GeometryError, np.linalg.LinAlgError, ValueError):
+            continue
+        if info["status"] != "marked":
+            report_contours.append({"contour": index, **info})
             continue
         replaced.setdefault(contour.element, {})[contour.subpath_index] = subpath
         # Serialization rounding must stay far below the lattice step.
@@ -716,7 +767,8 @@ def embed(source: bytes, key: bytes, params: SpectralParameters | None = None, c
     report = {
         "schema": "contourmark-spectral-v1",
         "parameters": asdict(params),
-        "marked_contours": len(report_contours),
+        "marked_contours": sum(c["status"] == "marked" for c in report_contours),
+        "skipped_contours": sum(c["status"] != "marked" for c in report_contours),
         "eligible_contours": len(eligible),
         "total_contours": len(document.contours),
         "decimals": decimals_used,

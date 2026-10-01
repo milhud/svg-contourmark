@@ -16,6 +16,8 @@ import hashlib
 import json
 import sys
 import time
+import importlib.metadata
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -26,6 +28,7 @@ sys.path.insert(0, str(ROOT / "models/iconshop"))
 
 from contourmark.geosample import GeoParameters, GeoWatermark, detect  # noqa: E402
 from contourmark.point_token_models import DecodeState, IconShopGrammar, watermarked_step  # noqa: E402
+from run_identity import file_digest, prepare_run  # noqa: E402
 
 PROMPTS = [
     "star", "heart", "house", "car", "rocket", "calendar", "cat", "dog", "tree", "flower",
@@ -49,7 +52,9 @@ def load_model(device: torch.device):
     state = load_file(str(ROOT / "models/iconshop/model.safetensors"))
     if any(k.startswith("model.") for k in state):
         state = {k.replace("model.", "", 1): v for k, v in state.items()}
-    model.load_state_dict(state, strict=False)
+    incompatible = model.load_state_dict(state, strict=False)
+    if incompatible.missing_keys or incompatible.unexpected_keys:
+        raise ValueError(f"checkpoint mismatch: {incompatible}")
     return model.to(device).eval(), tokenizer, cfg
 
 
@@ -70,6 +75,9 @@ def generate(model, tokenizer, cfg, prompts: list[str], seeds: list[int], waterm
                      return_token_type_ids=False)["input_ids"].to(device)
     num_text = tokenizer.vocab_size
     rngs = [np.random.default_rng(seed) for seed in seeds]
+    # Each sample owns every random stream. Sharding/batch membership must
+    # not consume another sample's free-group or within-group randomness.
+    watermarks = [GeoWatermark(watermark.key, watermark.params, seed=seed) if watermark else None for seed in seeds]
     states = [DecodeState(grammar) for _ in range(batch)]
     tokens: list[list[int]] = [[] for _ in range(batch)]
     keyed = [0] * batch
@@ -83,7 +91,7 @@ def generate(model, tokenizer, cfg, prompts: list[str], seeds: list[int], waterm
         logits = logits.float().cpu().numpy()
         next_tokens = []
         for row, sample in enumerate(alive):
-            token, was_keyed = watermarked_step(states[sample], logits[row], watermark, rngs[sample], top_p=top_p, temperature=temperature)
+            token, was_keyed = watermarked_step(states[sample], logits[row], watermarks[sample], rngs[sample], top_p=top_p, temperature=temperature)
             keyed[sample] += was_keyed
             tokens[sample].append(token)
             if token != 0:
@@ -97,7 +105,8 @@ def generate(model, tokenizer, cfg, prompts: list[str], seeds: list[int], waterm
         alive = [alive[row] for row in keep]
         pixel_seq, xy_seq = pixel_seq[keep], xy_seq[keep]
     elapsed = time.time() - started
-    return [{"prompt": p, "seed": s, "tokens": t, "keyed_steps": k, "svg": st.svg(), "seconds": elapsed / batch}
+    return [{"prompt": p, "seed": s, "tokens": t, "keyed_steps": k, "svg": st.svg(), "seconds": elapsed / batch,
+             "completed": bool(t and t[-1] == 0), "truncated": not bool(t and t[-1] == 0)}
             for p, s, t, k, st in zip(prompts, seeds, tokens, keyed, states)]
 
 
@@ -117,15 +126,35 @@ def main() -> None:
     args = parser.parse_args()
     if not 0 <= args.shard < args.num_shards:
         raise SystemExit("--shard must be in [0, --num-shards)")
+    if args.batch < 1 or args.samples_per_prompt < 1 or args.max_tokens < 1:
+        raise SystemExit("batch, samples-per-prompt and max-tokens must be positive")
     device = torch.device(args.device)
-    model, tokenizer, cfg = load_model(device)
     key = hashlib.sha256(b"iconshop-geosample-evaluation-key").digest()
     wrong = hashlib.sha256(b"iconshop-geosample-wrong-key").digest()
     args.output.mkdir(parents=True, exist_ok=True)
     # One log per shard so concurrent GPU workers never write the same file;
     # merge with: cat samples.shard*.jsonl > samples.jsonl
     log = args.output / (f"samples.shard{args.shard}.jsonl" if args.num_shards > 1 else "samples.jsonl")
-    done = {(r["prompt"], r["seed"], r["marked"]) for r in map(json.loads, log.read_text().splitlines())} if log.exists() else set()
+    files = sorted((ROOT / "src/contourmark").glob("*.py")) + [Path(__file__), ROOT / "experiments/run_identity.py"]
+    files += sorted((ROOT / "models/iconshop").rglob("*.py"))
+    files += [ROOT / "models/iconshop" / name for name in ("config.json", "model.safetensors", "word_embedding_512.pt")]
+    configuration = {
+        "schema": "iconshop-geosample-run-v2", "prompts": args.prompts,
+        "seed_base": args.seed_base, "samples_per_prompt": args.samples_per_prompt,
+        "top_p": args.top_p, "temperature": args.temperature, "max_tokens": args.max_tokens,
+        "shard": args.shard, "num_shards": args.num_shards, "device": str(device),
+        "watermark": asdict(GeoParameters()), "key_id": hashlib.sha256(key).hexdigest(),
+        "files": {str(path.relative_to(ROOT)): file_digest(path) for path in files},
+        "packages": {name: importlib.metadata.version(name) for name in ("torch", "transformers", "numpy", "scipy")},
+    }
+    run_id = prepare_run(log, configuration)
+    records = [json.loads(line) for line in log.read_text().splitlines() if line.strip()] if log.exists() else []
+    if any(r.get("run_id") != run_id for r in records):
+        raise ValueError("sample log contains mismatched run identities")
+    done = {(r["prompt"], r["seed"], r["marked"]) for r in records if (args.output / r["file"]).exists()}
+    if len(done) != len(records):
+        raise ValueError("duplicate or missing sample artifacts; repair log before resuming")
+    model, tokenizer, cfg = load_model(device)
     jobs = [(p, args.seed_base + i) for p in args.prompts for i in range(args.samples_per_prompt)]
     jobs = jobs[args.shard::args.num_shards]
     for marked in (False, True):
@@ -140,7 +169,7 @@ def main() -> None:
                     (args.output / name).write_bytes(result["svg"])
                     check = detect(result["svg"], key)
                     record = {k: v for k, v in result.items() if k != "svg"}
-                    record.update({"marked": marked, "file": name, "log10_p": check["log10_p_value"], "distinct_vertices": check["distinct_vertices"],
+                    record.update({"run_id": run_id, "marked": marked, "file": name, "log10_p": check["log10_p_value"], "distinct_vertices": check["distinct_vertices"],
                                    "wrong_key_log10_p": detect(result["svg"], wrong)["log10_p_value"], "top_p": args.top_p, "temperature": args.temperature})
                     stream.write(json.dumps(record) + "\n")
             print(f"{'marked' if marked else 'plain'} {start + len(chunk)}/{len(todo)}", flush=True)

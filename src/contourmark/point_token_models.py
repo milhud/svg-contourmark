@@ -231,6 +231,11 @@ class GeoWatermarkLogitsProcessor:
     ``do_sample=True`` and pass the same ``top_p``/``top_k``/``temperature``
     here (and none to ``generate``) so the keyed choice sees the decoder's
     real truncated distribution.
+
+    Each batch row is one drawing and owns its sampler state (the set of
+    descriptors already looked at) and its random streams, so results do not
+    depend on batch composition.  Rows must keep their identity across steps:
+    use sampling, not beam search.
     """
 
     def __init__(self, grammar: PointTokenGrammar, watermark: GeoWatermark, prompt_length: int,
@@ -239,7 +244,17 @@ class GeoWatermarkLogitsProcessor:
         self.watermark = watermark
         self.prompt_length = prompt_length
         self.top_p, self.top_k, self.temperature = top_p, top_k, temperature
-        self.rng = np.random.default_rng(seed)
+        self.seed = seed
+        self.rows: dict[int, tuple[GeoWatermark, np.random.Generator]] = {}
+
+    def _row(self, row: int, fresh: bool) -> tuple[GeoWatermark, np.random.Generator]:
+        if fresh or row not in self.rows:
+            template = self.watermark
+            self.rows[row] = (
+                GeoWatermark(template.key, template.params, seed=self.seed * 1_000_003 + row, reuse=template.reuse),
+                np.random.default_rng([self.seed, row]),
+            )
+        return self.rows[row]
 
     def __call__(self, input_ids, scores):  # torch tensors
         import torch
@@ -247,9 +262,11 @@ class GeoWatermarkLogitsProcessor:
         out = torch.full_like(scores, -math.inf)
         for row in range(scores.shape[0]):
             state = DecodeState(self.grammar)
-            for token in input_ids[row, self.prompt_length:].tolist():
+            history = input_ids[row, self.prompt_length:].tolist()
+            for token in history:
                 state.feed(token)
-            chosen, _ = watermarked_step(state, scores[row].float().cpu().numpy(), self.watermark, self.rng, self.top_p, self.top_k, self.temperature)
+            watermark, rng = self._row(row, fresh=not history)
+            chosen, _ = watermarked_step(state, scores[row].float().cpu().numpy(), watermark, rng, self.top_p, self.top_k, self.temperature)
             out[row, chosen] = 0.0
         return out
 

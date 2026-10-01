@@ -175,6 +175,19 @@ def group_transform(transform: str) -> Attack:
     return attack
 
 
+def group_transform_centered(degrees: float = 15.0, scale: float = 0.7) -> Attack:
+    """Wrap the drawing in a rotate+scale group about the viewBox centre.
+
+    Keeps the content inside the viewport (geometry pushed off-canvas is not
+    drawn and is not scored), while exercising transform flattening.
+    """
+    def attack(source: bytes) -> bytes:
+        x, y, w, h = _view_box(ET.fromstring(source))
+        cx, cy = x + w / 2, y + h / 2
+        return group_transform(f"translate({cx:g} {cy:g}) rotate({degrees:g}) scale({scale:g}) translate({-cx:g} {-cy:g})")(source)
+    return attack
+
+
 def reverse_direction(source: bytes) -> bytes:
     def reverse(subpath: Subpath) -> Subpath:
         segments = []
@@ -439,7 +452,7 @@ def standard_suite(corpus_others: list[bytes] | None = None) -> dict[str, Attack
         "rotate_90": rotation(90),
         "mirror": affine(np.array([[-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])),
         "aspect_1.2": scaling(1.2, 1.0),
-        "group_transform": group_transform("translate(3 4) rotate(15) scale(1.7)"),
+        "group_transform": group_transform_centered(15.0, 0.7),
         "reorder": reorder,
         "reverse": reverse_direction,
         "restart": rotate_start,

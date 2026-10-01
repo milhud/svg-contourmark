@@ -30,12 +30,26 @@ def main() -> None:
     attacks += sorted({a for r in records for a in r["attacks"]} - set(attacks))
     clean_ok = [r for r in marked if r["attacks"].get("identity", {}).get("log10_p", 0) <= -6]
     summary: dict = {"marked": len(marked), "plain": len(plain), "clean_detectable_1e-6": len(clean_ok), "attacks": {}}
+    # End-to-end denominators: truncated generations are kept in every rate
+    # and reported, not silently treated as finished icons.
+    summary["generation"] = {
+        "marked_truncated": sum(bool(r.get("truncated")) for r in marked),
+        "plain_truncated": sum(bool(r.get("truncated")) for r in plain),
+        "marked_without_descriptors": sum(r["distinct_vertices"] == 0 for r in marked),
+        "run_ids": sorted({str(r.get("run_id")) for r in records}),
+    }
     for attack in attacks:
         values = [r["attacks"][attack]["log10_p"] for r in marked if "log10_p" in r["attacks"].get(attack, {})]
         if not values:
             continue
         conditional = [r["attacks"][attack]["log10_p"] for r in clean_ok if "log10_p" in r["attacks"].get(attack, {})]
+        attempted = [r["attacks"][attack] for r in marked if attack in r["attacks"]]
         summary["attacks"][attack] = {
+            # Attack failures (missing tool, crash) are reported, not hidden:
+            # rates are over completed attacks only.
+            "attempted": len(attempted),
+            "attack_errors": sum("attack_error" in a for a in attempted),
+            "detect_errors": sum("detect_error" in a for a in attempted),
             "tpr_1e-6": rate(values, -6), "tpr_1e-3": rate(values, -3),
             "conditional_1e-6": rate(conditional, -6) if conditional else None,
             "median_log10_p": float(np.median(values)),
@@ -64,11 +78,15 @@ def main() -> None:
             preservation[field] = {"plain_median": float(np.median(a)), "marked_median": float(np.median(b)), "mannwhitney_p": float(test.pvalue)}
     summary["preservation"] = preservation
 
+    generation = summary["generation"]
     lines = [f"# Geosample evaluation ({len(marked)} marked, {len(plain)} plain samples)", "",
-             "| Attack | TPR@1e-6 | TPR@1e-3 | conditional@1e-6 | median log10 p |", "|---|---|---|---|---|"]
+             f"Truncated at the token limit: {generation['marked_truncated']} marked, {generation['plain_truncated']} plain. "
+             f"Marked samples with no descriptor: {generation['marked_without_descriptors']}. All are kept in the denominators.", "",
+             "Rates are over completed attacks; `errors` counts attacks that could not run (attack/detect).", "",
+             "| Attack | TPR@1e-6 | TPR@1e-3 | conditional@1e-6 | median log10 p | attempted | errors |", "|---|---|---|---|---|---|---|"]
     for attack, info in summary["attacks"].items():
         conditional = "—" if info["conditional_1e-6"] is None else f"{info['conditional_1e-6']['rate']:.2f}"
-        lines.append(f"| {attack} | {info['tpr_1e-6']['rate']:.2f} | {info['tpr_1e-3']['rate']:.2f} | {conditional} | {info['median_log10_p']:.1f} |")
+        lines.append(f"| {attack} | {info['tpr_1e-6']['rate']:.2f} | {info['tpr_1e-3']['rate']:.2f} | {conditional} | {info['median_log10_p']:.1f} | {info['attempted']} | {info['attack_errors']}/{info['detect_errors']} |")
     lines += ["", "## Nulls", "", "| Null | n | FPR@1e-2 | FPR@1e-3 | FPR@1e-6 |", "|---|---|---|---|---|"]
     for name, info in summary["nulls"].items():
         lines.append(f"| {name} | {info['fpr_1e-2']['n']} | {info['fpr_1e-2']['rate']:.3f} | {info['fpr_1e-3']['rate']:.3f} | {info['fpr_1e-6']['rate']:.3f} |")

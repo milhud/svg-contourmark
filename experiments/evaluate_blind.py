@@ -98,9 +98,14 @@ def _comment_detect(source: bytes, key: bytes) -> float:
     return -300.0 if simple.metadata_detect(source, hashlib.sha256(key).hexdigest()[:32]) else 0.0
 
 
-def methods(params: SpectralParameters) -> dict:
+def methods(params: SpectralParameters, visibility: str = "strict") -> dict:
+    def spectral_detect(source: bytes, key: bytes) -> float:
+        result = detect(source, key, params, visibility=visibility)
+        # Evidence that cannot be bound to visible content does not count.
+        return result["log10_p_value"] if result["status"] != "indeterminate" or result["p_value"] > params.threshold else 0.0
+
     return {
-        "spectral": (lambda s, k: embed(s, k, params)[0], lambda s, k: detect(s, k, params)["log10_p_value"]),
+        "spectral": (lambda s, k: embed(s, k, params, visibility=visibility)[0], spectral_detect),
         "fd_vertex": (vb.fd_vertex_embed, lambda s, k: vb.fd_vertex_detect(s, k)["log10_p_value"]),
         "bezier_split": (vb.bezier_split_embed, lambda s, k: vb.bezier_split_detect(s, k)["log10_p_value"]),
         "numeric_lsb": (vb.numeric_lsb_embed, lambda s, k: vb.numeric_lsb_detect(s, k)["log10_p_value"]),
@@ -122,9 +127,10 @@ def run_item(task: tuple[dict, list[bytes], dict]) -> dict:
     if config.get("attacks"):
         suite = {name: suite[name] for name in config["attacks"]}
     record: dict = {"path": item["path"], "source": item["source"], "style": item["style"], "bytes": len(source), "methods": {}}
+    visibility = config.get("visibility", "strict")
     selected = config.get("methods") or list(methods(params))
     for name in selected:
-        embed_fn, detect_fn = methods(params)[name]
+        embed_fn, detect_fn = methods(params, visibility)[name]
         entry: dict = {}
         started = time.perf_counter()
         try:
@@ -148,12 +154,16 @@ def run_item(task: tuple[dict, list[bytes], dict]) -> dict:
             entry["fidelity_error"] = str(exc)[:200]
         if name == "spectral":
             try:
-                report = embed(source, key, params)[1]
+                report = embed(source, key, params, visibility=visibility)[1]
                 entry["marked_contours"] = report["marked_contours"]
                 entry["eligible_contours"] = report["eligible_contours"]
                 entry["total_contours"] = report["total_contours"]
                 scale = load_document(source).scale() or 1.0
-                entry["max_curve_displacement_over_diagonal"] = max((c["curve_max_displacement"] for c in report["contours"]), default=0.0) / scale
+                marked_only = [c for c in report["contours"] if c.get("status", "marked") == "marked"]
+                entry["skipped_contours"] = report.get("skipped_contours", 0)
+                entry["skipped_unstable_seed"] = sum(c.get("status") == "skipped_unstable_seed" for c in report["contours"])
+                entry["skipped_distortion"] = sum(c.get("status") == "skipped_distortion" for c in report["contours"])
+                entry["max_curve_displacement_over_diagonal"] = max((c["curve_max_displacement"] for c in marked_only), default=0.0) / scale
                 entry["unmarked_selected"] = sum(c["verifier_unmarked"] for c in report["contours"])
                 entry["selected"] = sum(c["verifier_coefficients"] for c in report["contours"])
             except Exception:
@@ -193,6 +203,7 @@ def main() -> None:
     parser.add_argument("--methods", nargs="*")
     parser.add_argument("--attacks", nargs="*")
     parser.add_argument("--params", type=json.loads, default={})
+    parser.add_argument("--visibility", choices=["strict", "render"], default="strict")
     args = parser.parse_args()
     items = json.loads(args.corpus.read_text())["items"]
     if args.limit:
@@ -203,7 +214,7 @@ def main() -> None:
     done = set()
     if args.output.exists():
         done = {json.loads(line)["path"] for line in args.output.read_text().splitlines() if line.strip()}
-    config = {"methods": args.methods, "attacks": args.attacks, "params": args.params}
+    config = {"methods": args.methods, "attacks": args.attacks, "params": args.params, "visibility": args.visibility}
     tasks = []
     for index, item in enumerate(items):
         if item["path"] in done:

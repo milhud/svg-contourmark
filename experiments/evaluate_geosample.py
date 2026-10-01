@@ -44,6 +44,7 @@ def run(task: tuple[dict, str, list[bytes], list[str] | None]) -> dict:
     out = {
         "file": record["file"], "prompt": record["prompt"], "seed": record["seed"], "marked": record["marked"],
         "tokens": len(record.get("tokens", [])), "keyed_steps": record.get("keyed_steps", 0),
+        "truncated": bool(record.get("truncated", False)), "run_id": record.get("run_id"),
         "paths": paths, "contours": contours,
         "vertices": clean.get("vertices", 0), "distinct_vertices": clean["distinct_vertices"],
         "wrong_key_log10_p": detect(source, WRONG)["log10_p_value"], "attacks": {},

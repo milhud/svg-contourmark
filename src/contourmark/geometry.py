@@ -74,10 +74,19 @@ class Contour:
     ctm: np.ndarray  # 2x3 affine matrix, local -> document coordinates
     visible: bool
     editable: bool  # False for shapes and <use> instances
+    # Effects whose outcome this parser cannot compute (clip-path, mask,
+    # filter, nested viewport).  Such a contour may be partly or wholly
+    # invisible, so detectors must not treat it as visible evidence.
+    unresolved: tuple[str, ...] = ()
     closed: bool = field(init=False)
 
     def __post_init__(self) -> None:
         self.closed = self.subpath.closed or closes(self.subpath)
+
+    @property
+    def scorable(self) -> bool:
+        """Visible, with visibility fully determined by the supported subset."""
+        return self.visible and not self.unresolved
 
 
 CLOSURE_TOLERANCE = 5e-3  # fraction of control-polygon length
@@ -379,11 +388,36 @@ def _visible(chain: list[dict[str, str]]) -> bool:
     return fill_visible or stroke_visible
 
 
+_EFFECTS = ("clip-path", "mask", "filter")
+_GLOBAL_UNRESOLVED = {"script", "animate", "animateTransform", "animateMotion", "set", "foreignObject"}
+
+
+def _effects(element: ET.Element) -> tuple[str, ...]:
+    declarations = {k.lower(): v for k, v in element.attrib.items()}
+    for part in element.get("style", "").split(";"):
+        if ":" in part:
+            name, value = part.split(":", 1)
+            declarations[name.strip().lower()] = value
+    return tuple(name for name in _EFFECTS if declarations.get(name, "none").strip().lower() not in ("none", ""))
+
+
 @dataclass
 class Document:
     root: ET.Element
     contours: list[Contour]
     view_box: tuple[float, float, float, float] | None
+    # Document-wide features that can change any element's appearance and
+    # that this parser does not evaluate (CSS rules, scripts, animation).
+    unresolved_features: tuple[str, ...] = ()
+
+    def visibility_report(self) -> dict:
+        excluded = [c for c in self.contours if c.visible and c.unresolved]
+        return {
+            "scored_contours": sum(c.scorable for c in self.contours),
+            "excluded_contours": len(excluded),
+            "excluded_reasons": sorted({reason for c in excluded for reason in c.unresolved}),
+            "unresolved_document_features": list(self.unresolved_features),
+        }
 
     def scale(self) -> float:
         """Diagonal of the drawn geometry's bounding box."""
@@ -392,6 +426,28 @@ class Document:
             return 0.0
         stacked = np.concatenate(points)
         return float(abs(complex(np.ptp(stacked.real), np.ptp(stacked.imag))))
+
+
+def evidence_status(p_value: float, threshold: float, document: Document) -> dict:
+    """Turn a p-value into a decision that respects what could be resolved.
+
+    * ``detected``: evidence at the threshold from contours whose visibility
+      the supported subset fully determines.
+    * ``indeterminate``: the document uses appearance features this parser
+      does not evaluate (CSS rules, scripts, animation), or contours were
+      excluded for unresolved clipping/masking/filtering.  This is NOT a
+      statement that the document is unmarked.
+    * ``not_detected``: fully resolved and below the threshold.
+    """
+    report = document.visibility_report()
+    blocked = bool(report["unresolved_document_features"])
+    if p_value <= threshold and not blocked:
+        status = "detected"
+    elif blocked or report["excluded_contours"]:
+        status = "indeterminate"
+    else:
+        status = "not_detected"
+    return {"status": status, "detected": status == "detected", **report}
 
 
 def parse_svg(source: bytes) -> ET.Element:
@@ -411,13 +467,16 @@ def load_document(source: bytes | ET.Element, include_shapes: bool = True) -> Do
     ids = {element.get("id"): element for element in root.iter() if element.get("id")}
     contours: list[Contour] = []
 
-    def visit(element: ET.Element, ctm: np.ndarray, styles: list[dict[str, str]], editable: bool, depth: int) -> None:
+    def visit(element: ET.Element, ctm: np.ndarray, styles: list[dict[str, str]], editable: bool, depth: int, effects: tuple[str, ...] = ()) -> None:
         name = tag(element)
         if name in _NON_RENDERED or depth > 32:
             return
         local = parse_transform(element.get("transform"))
         matrix = _compose(ctm, local)
         chain = styles + [_style(element)]
+        effects = effects + tuple(e for e in _effects(element) if e not in effects)
+        if name == "svg" and element is not root and "nested-svg" not in effects:
+            effects = effects + ("nested-svg",)  # clips to its own viewport
         if name == "use":
             href = element.get("href") or element.get(f"{{{XLINK_NS}}}href") or ""
             target = ids.get(href[1:]) if href.startswith("#") else None
@@ -425,15 +484,15 @@ def load_document(source: bytes | ET.Element, include_shapes: bool = True) -> Do
                 shift = np.array([[1, 0, _length(element.get("x"))], [0, 1, _length(element.get("y"))]])
                 if tag(target) == "symbol":
                     for child in target:
-                        visit(child, _compose(matrix, shift), chain, False, depth + 1)
+                        visit(child, _compose(matrix, shift), chain, False, depth + 1, effects)
                 else:
-                    visit(target, _compose(matrix, shift), chain, False, depth + 1)
+                    visit(target, _compose(matrix, shift), chain, False, depth + 1, effects)
             return
         if name in {"svg", "g", "a", "switch"}:
             if name == "svg" and element is not root:
                 matrix = _compose(matrix, np.array([[1, 0, _length(element.get("x"))], [0, 1, _length(element.get("y"))]]))
             for child in element:
-                visit(child, matrix, chain, editable, depth + 1)
+                visit(child, matrix, chain, editable, depth + 1, effects)
             return
         if name != "path" and not include_shapes:
             return
@@ -446,7 +505,7 @@ def load_document(source: bytes | ET.Element, include_shapes: bool = True) -> Do
             return
         visible = _visible(chain)
         for index, subpath in enumerate(subpaths):
-            contours.append(Contour(element, index, subpath, matrix, visible, editable and name == "path"))
+            contours.append(Contour(element, index, subpath, matrix, visible, editable and name == "path", effects))
 
     visit(root, _IDENTITY.copy(), [], True, 0)
     view_box = None
@@ -454,7 +513,23 @@ def load_document(source: bytes | ET.Element, include_shapes: bool = True) -> Do
         values = [float(v) for v in re.findall(_NUMBER, root.get("viewBox", ""))]
         if len(values) == 4:
             view_box = tuple(values)  # type: ignore[assignment]
-    return Document(root, contours, view_box)
+    if view_box is not None and view_box[2] > 0 and view_box[3] > 0:
+        # Geometry entirely outside the root viewport is never drawn.
+        x0, y0, x1, y1 = view_box[0], view_box[1], view_box[0] + view_box[2], view_box[1] + view_box[3]
+        for contour in contours:
+            if not contour.visible:
+                continue
+            points = apply_affine(contour.ctm, dense_points(contour.subpath))
+            if points.real.max() < x0 or points.real.min() > x1 or points.imag.max() < y0 or points.imag.min() > y1:
+                contour.visible = False
+    features = set()
+    for element in root.iter():
+        name = tag(element)
+        if name == "style" and (element.text or "").strip():
+            features.add("css")
+        elif name in _GLOBAL_UNRESOLVED:
+            features.add(name)
+    return Document(root, contours, view_box, tuple(sorted(features)))
 
 
 # ---------------------------------------------------------------------------

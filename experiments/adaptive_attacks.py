@@ -37,10 +37,12 @@ def run(item: dict) -> dict:
     record = {"path": item["path"], "source": item["source"], "clean": detect(marked, key, params)["log10_p_value"]}
     record["embedding_fidelity"] = fidelity(source, marked)
     attacker_key = hashlib.sha256(b"attacker|" + item["path"].encode()).digest()
+    # The attacker does not honour the embedder's own displacement cap.
+    uncapped = {"max_relative_displacement": 10.0}
     attacks = {
-        "remark_random_key": lambda: embed(marked, attacker_key, params)[0],
-        "remark_2x": lambda: embed(marked, attacker_key, SpectralParameters(delta=2 * params.delta))[0],
-        "remark_4x": lambda: embed(marked, attacker_key, SpectralParameters(delta=4 * params.delta))[0],
+        "remark_random_key": lambda: embed(marked, attacker_key, SpectralParameters(**uncapped))[0],
+        "remark_2x": lambda: embed(marked, attacker_key, SpectralParameters(delta=2 * params.delta, **uncapped))[0],
+        "remark_4x": lambda: embed(marked, attacker_key, SpectralParameters(delta=4 * params.delta, **uncapped))[0],
     }
     for name, attack in attacks.items():
         try:

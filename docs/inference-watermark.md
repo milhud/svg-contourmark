@@ -70,11 +70,15 @@ A vertex is skipped (no keyed group) in two cases:
 ### 2.2 First curve handle → tangent descriptor
 
 When the decoder is about to emit `c1` of a cubic, each candidate `c1` fixes
-the departing handle `h_out = c1 − V`. The arriving handle `h_in` is already
-known:
+the departing **end derivative** `h_out = 3 (c1 − V)`. The arriving derivative
+`h_in` is already known:
 
-* `end − c2` if the previous segment is a curve;
+* `3 (end − c2)` for a cubic, or `2 (end − c)` for a quadratic;
 * the chord direction if it is a line.
+
+Derivatives (degree × control offset) are used, not raw handles. A quadratic
+and its exactly degree-elevated cubic then give the same descriptor; raw
+handles differ by the degree factor (found in review, now a regression test).
 
 The descriptor is
 
@@ -103,8 +107,21 @@ descriptor of `(P0, c1, c2)` alone changes under traversal reversal.
 | Merging collinear lines (SVGO) | yes | yes | Straight runs are merged on both sides before descriptors |
 | Path merge / split / reorder | yes | yes | Per-contour, order-free set |
 | Non-uniform scale / skew | **no** | **no** | Angles change |
-| Exact subdivision | **degraded** | partly | New smooth vertices; chords and handles shrink; tangent angles at original vertices survive |
+| Degree elevation (Q → C), straight cubic ↔ line | yes | yes | Derivative-scaled handles; shared 32-sample bulge estimate |
+| Exact subdivision | **degraded** | partly | New smooth vertices; chords and derivatives rescale; tangent angles at original vertices survive. Not an intrinsic invariant |
 | Rasterize and retrace, polyline flattening | **no** | **no** | Vertices are re-placed |
+
+**Visibility.** Detection scores only contours whose visibility the parser
+fully determines. The rules are:
+
+* Contours under `clip-path`, `mask`, `filter` or a nested `<svg>` viewport
+  are excluded.
+* Geometry entirely outside the root viewBox is treated as not drawn.
+* Documents with CSS rules, scripts or animation yield `status:
+  "indeterminate"` rather than a detection.
+* `detect(..., visibility="render")` asks librsvg whether each such contour
+  actually contributes pixels.
+* An `indeterminate` result is not a statement that the file is unmarked.
 
 The sampler and the detector share one implementation of descriptors and
 straight-run merging (`vertex_descriptor`, `tangent_descriptor`,
@@ -134,21 +151,81 @@ Gumbel-max identity `Pr[b* = b] = P_b`. Conditioned on `b* = b`, the
 within-group draw gives `i` with probability `p_i / P_b`. Multiplying gives
 `p_i`. ∎
 
-Under the random-PRF idealization the watermarked decoder therefore has
-exactly the unmarked next-token distribution at every step, with no logit
-bias and no quality loss in expectation. Grouping is what makes this hold
-even though many tokens share a descriptor. Assigning a keyed uniform per
-*token* and then reading only per-descriptor scores would not be
-distribution-preserving at the descriptor level.
+The lemma is a **one-step** statement: it needs the group uniforms to be
+independent of the probabilities and of the grouping. Grouping is what makes
+it hold even though many tokens share a descriptor.
 
-**Caveats** (the same as for text watermarks):
+### 3.1 The sequence law, and why naive reuse breaks it
 
-1. The same descriptor recurring at a later step reuses the same `u_b`. Steps
-   are therefore not independent across the drawing, although each step's
-   marginal is exact. Repeated motifs are pushed toward the same keyed
-   choices.
-2. Given the key, the prompt, and the unkeyed RNG, the output is
+An earlier version of this sampler used `u_b = PRF_K(b)` every time
+descriptor `b` appeared. That is **not** distribution-preserving for the
+sequence. After a keyed choice, the generated prefix carries information
+about the uniforms that were compared. Later probabilities depend on that
+prefix, so the "fresh uniforms" premise fails at later steps.
+
+Counterexample, found in the independent review (`docs/review-2026-09-30/`):
+
+* Two groups A and B. Step 1 has probabilities (0.5, 0.5).
+* Step 2 has (0.9, 0.1) if A was chosen and (0.5, 0.5) if B was chosen.
+* Ordinary sampling gives `Pr[step 2 = A] = 0.7`.
+* Reusing the two scores gives 0.5, and two identical contests repeat the
+  same choice 100% of the time instead of 50%.
+
+### 3.2 The rule that restores it
+
+Within one drawing, a keyed uniform is used only the **first** time its
+descriptor is looked at, meaning the first time it appears among the
+candidate groups, whether or not it wins. Every later look at that
+descriptor uses a fresh unkeyed uniform (`GeoWatermark(reuse="mask")`, the
+default; one instance, or `reset()`, per drawing).
+
+**Theorem (joint law).** In the random-PRF idealization, with the rule above,
+the watermarked decoder's output sequence has exactly the model's own
+distribution.
+
+*Proof.* Induct over steps.
+
+1. Let `H_t` be everything generated before step `t`, and `Q_t` the set of
+   descriptors looked at before `t`. `H_t` is a function of the uniforms
+   `{u_b : b ∈ Q_t}` and of unkeyed randomness.
+2. At step `t` each candidate group uses either a keyed `u_b` with
+   `b ∉ Q_t`, or a fresh unkeyed uniform.
+3. A random function's values at indices outside `Q_t` are independent of its
+   values inside `Q_t`. This holds even though *which* indices are examined
+   at step `t` depends on `H_t`: choosing where to look, based on other
+   independent values, does not bias the values found there.
+4. So, conditioned on `H_t`, the step's uniforms are i.i.d. Uniform(0,1) and
+   independent of the step's probabilities and grouping. The lemma gives
+   `Pr[token | H_t] = p(token | H_t)`.
+5. Multiplying over steps gives the joint law. ∎
+
+Regression tests (`tests/test_review_regressions.py`) check the
+counterexample: 0.50 and 0.70 with masking; 1.00 and 0.50 with
+`reuse="allow"`, which is kept only as an ablation.
+
+### 3.3 What the rule costs
+
+* **Power.** Descriptors looked at earlier carry no new signal later. A
+  descriptor that lost an earlier contest and is later chosen by unkeyed
+  randomness appears in the drawing with a below-average score. On the toy
+  generator (5 polygons, about 100 distinct descriptors), the median clean
+  log10 p goes from −49 (naive reuse) to −18 (masked), with 100% still below
+  1e-6. Real IconShop numbers must be re-measured on the cluster.
+* **Diversity.** Masked sampling repeats fewer motifs: median distinct
+  descriptors 100 versus 72 under naive reuse.
+
+**Remaining caveats:**
+
+1. This is an idealization. HMAC is a PRF, not a random function, and the
+   claim is about the sampler, not about a model's quality at a given top-p.
+2. One fixed deployment key gives the same keyed preference to every drawing's
+   first look at a descriptor. Across many outputs this can show up as a
+   key-specific style bias, and gives an observer of many outputs information
+   about the key. This has not been measured.
+3. Given the key, the prompt, and the unkeyed RNG, the output is
    deterministic.
+4. Batch rows must own their sampler state. `GeoWatermarkLogitsProcessor`
+   keeps one sampler per row and requires sampling (not beam search).
 
 ## 4. Blind detection
 
@@ -307,49 +384,63 @@ mark`) is the deployable option today.
 
 ## 7. Results
 
-### Toy point-token generator (`tests/test_geosample.py`)
+### Toy point-token generator (corrected, masked sampler)
 
-* **Setup:** Gaussian logits with σ = 3 grid units inside a 10-unit window on
-  the IconShop vocabulary. Five noisy 14-gons per drawing, each edge randomly
-  a line or a cubic, top-p 1.0. Seeds 0–2 give 68, 74, and 65 distinct
-  descriptors.
-* **Clean:** marked log10 p = −50.0, −49.5, −39.1. Unmarked drawings with the
-  key give −0.5, −1.4, −0.6; marked drawings with a wrong key give −0.2, 0.0,
-  −1.4.
-* **Unchanged** (identical log10 p on all three seeds): reorder, reverse,
-  restart, mirror, translate 5%, SVGO default, Scour default, round to 2 dp,
-  round to 1 dp, merge paths, split subpaths.
-* **Essentially unchanged:** rotate 30° (−50.0 / −47.7 / −39.1), scale 0.37
-  (−50.0 / −49.5 / −38.9), nested group transform (−50.0 / −48.9 / −39.1).
-* **Degraded but detected:** subdivision −9.6 / −8.8 / −7.9; Gaussian handle
-  noise at 0.1% of the diagonal −17.6 / −15.3 / −11.4.
-* **Fails:** aspect 1.2:1 stretch (−2.3 / −3.1 / −2.0); polyline flattening
-  at 0.05% (−0.4 / −0.7 / −2.1); rasterize-and-retrace at 1024 px (about 0).
-* **Distribution preservation:** across 6,000 keys on a 10-candidate step with
-  a shared group, a straight-continuation candidate, and a non-point
-  candidate, empirical frequencies match `p_i` (χ² test). Detector null over
-  random keys on unmarked drawings is super-uniform.
+Source: `experiments/results/geosample/toy_masked_robustness.json`.
+
+**Setup:** 30 drawings. Gaussian logits with σ = 3 grid units inside a 10-unit
+window on the IconShop vocabulary. Five noisy 14-gons per drawing, each edge
+randomly a line or a cubic, top-p 1.0. Median 100 distinct descriptors.
+
+| Transformation | median log10 p | detected at 1e-6 |
+|---|---|---|
+| none | −18.7 | 100% |
+| SVGO default / precision 2, Scour, picosvg | −18.6 to −18.7 | 100% |
+| round to 2 dp / 1 dp | −18.7 | 100% |
+| translate, mirror, reorder, reverse, restart, merge, split | −18.7 | 100% |
+| rotate 30°, scale 0.37, nested group transform | −17.8 to −18.1 | 100% |
+| delete 50% of contours | −16.5 | 100% |
+| handle noise 0.1% of diagonal | −3.7 | 27% |
+| handle noise 0.3% | −1.0 | 0% |
+| exact midpoint subdivision | −1.9 | 0% |
+| aspect stretch 1.2:1 | −1.4 | 0% |
+| polyline flattening 0.05% | 0.0 | 0% |
+| rasterize + retrace 1024 px | −0.2 | 0% |
+
+* **Nulls:** unmarked drawings with the key and marked drawings with a wrong
+  key never go below log10 p = −1.9.
+* **Comparison with naive reuse** (`reuse="allow"`): about −49 clean and about
+  −8 after subdivision. That sampler does not preserve the output
+  distribution (§3.1), so the numbers above are the ones to quote.
 
 ### IconShop (real checkpoint)
 
-TODO (parent): fill from `experiments/results/geosample/iconshop_p05` and
-`iconshop_p09`, using `evaluate_geosample.py` and `summarize_geosample.py`.
-Report:
+**To be measured on the cluster** (`hpc/README.md`). The 4-prompt pilot
+reported earlier (log10 p −3.5 to −4.7 at top-p 0.5) used the naive-reuse
+sampler. It is superseded and its raw outputs were not archived. Expect lower
+power with the corrected sampler. The run should report:
 
 * detection rates at 1e-6 and 1e-3;
-* survival under attacks;
-* the false-positive rate for plain samples and wrong keys;
+* survival under attacks, with attack-error counts;
+* false-positive rates for plain samples and wrong keys;
 * plain vs marked statistics;
-* log10 p vs distinct descriptors, at top-p 0.5 and 0.9.
-
-Pilot (4 prompts, top-p 0.5, after tangent keying): log10 p of −3.5 to −4.7
-per icon. Every keyed descriptor was recovered exactly by the detector. Power
-is limited by low per-step entropy and by unkeyed low-entropy vertices.
+* log10 p against the number of distinct descriptors, at top-p 0.5, 0.9 and
+  1.0.
 
 ### Null on human icons
 
-`experiments/results/geosample/null_corpus.json` covers 900 test-corpus
-icons × 300 keys (266,700 tests). Observed rates were 0.064 at 1e-1, 0.0071
-at 1e-2, 8.3e-4 at 1e-3, 5.6e-5 at 1e-4, and 0 at 1e-5. This run used the
-vertex-only descriptor version; re-run `geosample_null.py` for the current
-`v`+`t` version.
+`experiments/results/geosample/null_corpus.json`: 900 test-corpus icons × 300
+keys, current `v`+`t` descriptors with derivative-scaled handles. 890
+documents have descriptors (median 11 distinct); 267,000 tests.
+
+| Level α | Observed rate | Hits |
+|---|---|---|
+| 1e-1 | 0.063 | 16,910 |
+| 1e-2 | 0.0068 | 1,824 |
+| 1e-3 | 0.00072 | 191 |
+| 1e-4 | 7.9e-5 | 21 |
+| 1e-5 | 3.7e-6 | 1 |
+
+The smallest log10 p was −5.34. This many trials cannot confirm a rate near
+1e-6 empirically (with zero hits the 95% upper bound is about 1.1e-5); that
+level rests on the Gamma null and the random-PRF idealization.

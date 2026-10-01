@@ -21,12 +21,21 @@ cd experiments
 for TOP_P in $TOP_PS; do
   OUT="results/geosample/iconshop_p${TOP_P/./}"
   mkdir -p "$OUT"
+  PIDS=()
   for SHARD in $(seq 0 $((GPUS - 1))); do
     CUDA_VISIBLE_DEVICES=$SHARD ../.venv/bin/python iconshop_geosample.py \
       --output "$OUT" --top-p "$TOP_P" --samples-per-prompt "$SEEDS" --batch "$BATCH" \
       --device cuda --shard "$SHARD" --num-shards "$GPUS" > "../hpc/logs/gen_p${TOP_P}_shard${SHARD}.log" 2>&1 &
+    PIDS+=("$!")
   done
-  wait
+  FAILED=0
+  for PID in "${PIDS[@]}"; do
+    wait "$PID" || FAILED=1
+  done
+  if [ "$FAILED" -ne 0 ]; then
+    echo "generation shard failed; refusing to merge partial results" >&2
+    exit 1
+  fi
   cat "$OUT"/samples.shard*.jsonl > "$OUT/samples.jsonl"
   echo "top_p=$TOP_P: $(wc -l < "$OUT/samples.jsonl") samples in $OUT"
 done

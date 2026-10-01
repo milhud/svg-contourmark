@@ -16,9 +16,16 @@ is invariant to translation, rotation, uniform scale, mirroring, traversal
 direction, command syntax and numeric precision.  Candidates are grouped by
 quantized descriptor; each group gets a keyed uniform ``u_b = PRF_K(b)``; the
 group is chosen by Gumbel-max on group probability mass, and the token inside
-the group by ordinary sampling.  In the random-PRF idealization the next-token
-distribution is exactly unchanged (the same argument as SynthID-Text and
-Aaronson's scheme), so marking costs no quality in expectation.
+the group by ordinary sampling.
+
+Distribution preservation.  A keyed uniform is used only the *first* time its
+descriptor is looked at within one drawing; every later look at the same
+descriptor uses a fresh unkeyed uniform.  A uniform that has never been
+looked at is independent of the generated prefix, so by induction over steps
+the *joint* law of the output equals the model's own (random-PRF
+idealization).  Without this rule the one-step identity still holds but the
+sequence law does not: reused scores correlate later choices with earlier
+ones (see ``reuse="allow"`` and the regression tests).
 
 Detection needs only the final SVG and the key: re-extract vertex
 descriptors from the drawn geometry, look up ``u_b`` for each *distinct*
@@ -42,7 +49,7 @@ from typing import Sequence
 import numpy as np
 from scipy.special import gammaincc
 
-from .geometry import GeometryError, apply_affine, closes, dense_points, load_document
+from .geometry import Document, GeometryError, apply_affine, closes, dense_points, evidence_status, load_document
 
 
 @dataclass(frozen=True)
@@ -71,8 +78,11 @@ class Segment2:
     end: complex
     bulge: float  # max distance of the curve from its chord / chord length (0 for lines)
     straight: bool
-    out_handle: complex = 0j  # first control minus start (chord for lines)
-    in_handle: complex = 0j  # end minus last control (chord for lines)
+    # End derivatives of the segment's polynomial parameterization: degree x
+    # (control offset).  Using derivatives rather than raw handles makes a
+    # quadratic and its degree-elevated cubic agree.
+    out_handle: complex = 0j  # derivative at the start (chord for lines)
+    in_handle: complex = 0j  # derivative at the end (chord for lines)
 
     def __post_init__(self) -> None:
         if self.straight or self.out_handle == 0:
@@ -204,12 +214,12 @@ class PathTracker:
 
     def cubic_to(self, c1: complex, c2: complex, point: complex) -> None:
         if self.current is not None:
-            self.segments.append(Segment2(self.current, point, bulge_of(cubic_points(self.current, c1, c2, point)), False, c1 - self.current, point - c2))
+            self.segments.append(Segment2(self.current, point, bulge_of(cubic_points(self.current, c1, c2, point)), False, 3 * (c1 - self.current), 3 * (point - c2)))
         self.current = point
 
     def quad_to(self, c: complex, point: complex) -> None:
         if self.current is not None:
-            self.segments.append(Segment2(self.current, point, bulge_of(quad_points(self.current, c, point)), False, c - self.current, point - c))
+            self.segments.append(Segment2(self.current, point, bulge_of(quad_points(self.current, c, point)), False, 2 * (c - self.current), 2 * (point - c)))
         self.current = point
 
     def candidate_descriptor(self, end: complex | None, controls: Sequence[complex] = (), before: list[Segment2] | None = None) -> tuple[int, int, int] | None:
@@ -221,9 +231,9 @@ class PathTracker:
         if end is None or self.current is None or not self.segments:
             return None
         if len(controls) == 2:
-            after = Segment2(self.current, end, bulge_of(cubic_points(self.current, controls[0], controls[1], end)), False, controls[0] - self.current, end - controls[1])
+            after = Segment2(self.current, end, bulge_of(cubic_points(self.current, controls[0], controls[1], end)), False, 3 * (controls[0] - self.current), 3 * (end - controls[1]))
         elif len(controls) == 1:
-            after = Segment2(self.current, end, bulge_of(quad_points(self.current, controls[0], end)), False, controls[0] - self.current, end - controls[0])
+            after = Segment2(self.current, end, bulge_of(quad_points(self.current, controls[0], end)), False, 2 * (controls[0] - self.current), 2 * (end - controls[0]))
         else:
             after = Segment2(self.current, end, 0.0, True)
         if before is None:
@@ -246,7 +256,7 @@ class PathTracker:
         before = self.merged_history() if before is None else before
         if not before:
             return None
-        departing = handle - self.current
+        departing = 3 * (handle - self.current)  # cubic start derivative
         if abs(departing) <= 1e-12:
             return None
         probe = Segment2(self.current, self.current + departing, 1.0, False, departing, departing)
@@ -262,15 +272,30 @@ class Choice:
 
 
 class GeoWatermark:
-    """Keyed, distribution-preserving choice among candidate endpoints."""
+    """Keyed, distribution-preserving choice among candidate endpoints.
 
-    def __init__(self, key: bytes, params: GeoParameters | None = None, seed: int | None = None):
+    Use one instance per generated drawing (or call ``reset``): the set of
+    descriptors already looked at is part of the sampler's state.
+    ``reuse="allow"`` restores the naive behaviour (keyed score reused at
+    every step); it has more detection power but does not preserve the joint
+    output distribution and exists for ablation only.
+    """
+
+    def __init__(self, key: bytes, params: GeoParameters | None = None, seed: int | None = None, reuse: str = "mask"):
         if len(key) < 16:
             raise GeometryError("key must contain at least 16 bytes")
+        if reuse not in ("mask", "allow"):
+            raise GeometryError("reuse must be 'mask' or 'allow'")
         self.key = key
         self.params = params or GeoParameters()
         self.params.validate()
         self.rng = random.Random(seed)
+        self.reuse = reuse
+        self.queried: set[tuple] = set()
+
+    def reset(self) -> None:
+        """Start a new drawing: forget which descriptors were looked at."""
+        self.queried.clear()
 
     def choose(self, tracker: PathTracker, ends: Sequence[complex | None], probabilities: Sequence[float], controls: Sequence[Sequence[complex]] | None = None) -> Choice:
         """Pick one candidate segment endpoint.
@@ -309,8 +334,13 @@ class GeoWatermark:
                 continue
             if label[0] == "free":  # type: ignore[index]
                 u = self.rng.random()
+            elif self.reuse == "mask" and label in self.queried:
+                # Its keyed score already influenced the prefix; a fresh
+                # uniform keeps this step independent of the history.
+                u = self.rng.random()
             else:
                 u = keyed_uniform(self.key, label)  # type: ignore[arg-type]
+                self.queried.add(label)  # type: ignore[arg-type]
                 keyed_groups += 1
             score = math.log(mass) - math.log(-math.log(max(u, 1e-300)))
             if score > best_score:
@@ -325,37 +355,48 @@ class GeoWatermark:
 # Blind detection from the final SVG
 
 
-def document_descriptors(source: bytes, params: GeoParameters) -> list[list[tuple]]:
-    """Vertex descriptors per visible contour, from drawn geometry only."""
-    document = load_document(source)
+def document_descriptors(source: bytes | Document, params: GeoParameters) -> list[list[tuple]]:
+    """Vertex descriptors per scorable contour, from drawn geometry only."""
+    document = source if isinstance(source, Document) else load_document(source)
     out = []
     for contour in document.contours:
-        if not contour.visible:
+        if not contour.scorable:
             continue
         segments: list[Segment2] = []
         for segment in contour.subpath.segments:
             points = apply_affine(contour.ctm, segment.points)
             if segment.kind == "L":
                 segments.append(Segment2(complex(points[0]), complex(points[-1]), 0.0, True))
-            else:
+            elif segment.kind == "C":
+                # Same 32-sample bulge estimate as the sampler, so sampler and
+                # detector cannot disagree near a bin boundary.
+                curve = cubic_points(*[complex(p) for p in points])
+                segments.append(Segment2(complex(points[0]), complex(points[3]), bulge_of(curve), False, 3 * complex(points[1] - points[0]), 3 * complex(points[3] - points[2])))
+            elif segment.kind == "Q":
+                curve = quad_points(*[complex(p) for p in points])
+                segments.append(Segment2(complex(points[0]), complex(points[2]), bulge_of(curve), False, 2 * complex(points[1] - points[0]), 2 * complex(points[2] - points[1])))
+            else:  # arcs: derivatives from dense samples over the unit parameter
                 dense = apply_affine(contour.ctm, dense_points(type(contour.subpath)([segment], False)))
-                if segment.kind in "CQ":
-                    out_handle, in_handle = complex(points[1] - points[0]), complex(points[-1] - points[-2])
-                else:  # arcs: tangent directions from the dense samples, scaled like a cubic handle
-                    out_handle = complex(dense[1] - dense[0]) * (len(dense) - 1) / 3
-                    in_handle = complex(dense[-1] - dense[-2]) * (len(dense) - 1) / 3
-                segments.append(Segment2(complex(dense[0]), complex(dense[-1]), bulge_of(dense), False, out_handle, in_handle))
+                scale = len(dense) - 1
+                segments.append(Segment2(complex(dense[0]), complex(dense[-1]), bulge_of(dense), False, complex(dense[1] - dense[0]) * scale, complex(dense[-1] - dense[-2]) * scale))
         out.append(contour_descriptors(segments, contour.closed or closes(contour.subpath), params))
     return out
 
 
-def detect(source: bytes, key: bytes, params: GeoParameters | None = None) -> dict:
+def detect(source: bytes, key: bytes, params: GeoParameters | None = None, visibility: str = "strict") -> dict:
+    """Blind detection; see ``spectral.detect`` for the ``visibility`` modes."""
     params = params or GeoParameters()
     params.validate()
-    per_contour = document_descriptors(source, params)
+    if visibility == "render":
+        from .visibility import resolve_by_rendering
+
+        document = resolve_by_rendering(source)
+    else:
+        document = load_document(source)
+    per_contour = document_descriptors(document, params)
     distinct = sorted({d for contour in per_contour for d in contour}, key=str)
     if not distinct:
-        return {"detected": False, "p_value": 1.0, "log10_p_value": 0.0, "distinct_vertices": 0}
+        return {"p_value": 1.0, "log10_p_value": 0.0, "distinct_vertices": 0, **evidence_status(1.0, params.threshold, document)}
     scores = {d: -math.log(1 - keyed_uniform(key, d)) for d in distinct}
     statistic = sum(scores.values())
     # Distinct descriptors have independent uniform PRF values under H0, so
@@ -369,7 +410,7 @@ def detect(source: bytes, key: bytes, params: GeoParameters | None = None) -> di
     minimum = min(1.0, len(contour_ps) * min(contour_ps)) if contour_ps else 1.0
     p_value = min(1.0, 2 * min(global_p, minimum))
     return {
-        "detected": p_value <= params.threshold,
+        **evidence_status(p_value, params.threshold, document),
         "p_value": p_value,
         "log10_p_value": math.log10(max(p_value, 1e-300)),
         "global_log10_p": math.log10(max(global_p, 1e-300)),
