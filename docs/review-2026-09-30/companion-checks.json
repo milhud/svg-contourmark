@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "checks": [
+    "unsupported effects",
+    "deduplication",
+    "multiple tests",
+    "polyline subdivision",
+    "symmetric boundary distances",
+    "alpha compositing",
+    "constraint rollback",
+    "attack query budget",
+    "failure denominator",
+    "run identity",
+    "Chernoff form",
+    "paired cluster bootstrap"
+  ]
+}

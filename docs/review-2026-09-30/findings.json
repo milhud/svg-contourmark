@@ -1,0 +1,47 @@
+{
+  "reviewed_head": "da841d10b453ae175df4db27bae841b8720cd028",
+  "sampler": {
+    "trials": 10000,
+    "first_A": 0.5048,
+    "repeat_same_choice": 1.0,
+    "independent_expected": 0.5,
+    "adaptive_second_A": 0.5048,
+    "unmarked_expected": 0.7
+  },
+  "visibility": {
+    "clean_log10_p": -49.50878489276216,
+    "empty_clip_log10_p": -49.50878489276216,
+    "clipped_render_all_white": true
+  },
+  "spectral_visibility": {
+    "clean_log10_p": -19.485291537424796,
+    "empty_clip_log10_p": -19.485291537424796,
+    "clipped_render_all_white": true
+  },
+  "subdivision_log10_p": [
+    -8.823296996148992,
+    -7.604036936001258,
+    -8.305015252045,
+    -9.06026271218407
+  ],
+  "equivalent_quadratic_cubic": {
+    "quadratic": [
+      [
+        [
+          "t",
+          18,
+          9
+        ]
+      ]
+    ],
+    "elevated_cubic": [
+      [
+        [
+          "t",
+          18,
+          6
+        ]
+      ]
+    ]
+  }
+}

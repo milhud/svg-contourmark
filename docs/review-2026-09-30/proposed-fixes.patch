@@ -1,0 +1,330 @@
+diff --git a/experiments/iconshop_geosample.py b/experiments/iconshop_geosample.py
+index d9aad8d..2fcf0fe 100644
+--- a/experiments/iconshop_geosample.py
++++ b/experiments/iconshop_geosample.py
+@@ -16,6 +16,8 @@ import hashlib
+ import json
+ import sys
+ import time
++import importlib.metadata
++from dataclasses import asdict
+ from pathlib import Path
+ 
+ import numpy as np
+@@ -26,6 +28,7 @@ sys.path.insert(0, str(ROOT / "models/iconshop"))
+ 
+ from contourmark.geosample import GeoParameters, GeoWatermark, detect  # noqa: E402
+ from contourmark.point_token_models import DecodeState, IconShopGrammar, watermarked_step  # noqa: E402
++from run_identity import file_digest, prepare_run  # noqa: E402
+ 
+ PROMPTS = [
+     "star", "heart", "house", "car", "rocket", "calendar", "cat", "dog", "tree", "flower",
+@@ -49,7 +52,9 @@ def load_model(device: torch.device):
+     state = load_file(str(ROOT / "models/iconshop/model.safetensors"))
+     if any(k.startswith("model.") for k in state):
+         state = {k.replace("model.", "", 1): v for k, v in state.items()}
+-    model.load_state_dict(state, strict=False)
++    incompatible = model.load_state_dict(state, strict=False)
++    if incompatible.missing_keys or incompatible.unexpected_keys:
++        raise ValueError(f"checkpoint mismatch: {incompatible}")
+     return model.to(device).eval(), tokenizer, cfg
+ 
+ 
+@@ -70,6 +75,9 @@ def generate(model, tokenizer, cfg, prompts: list[str], seeds: list[int], waterm
+                      return_token_type_ids=False)["input_ids"].to(device)
+     num_text = tokenizer.vocab_size
+     rngs = [np.random.default_rng(seed) for seed in seeds]
++    # Each sample owns every random stream. Sharding/batch membership must
++    # not consume another sample's free-group or within-group randomness.
++    watermarks = [GeoWatermark(watermark.key, watermark.params, seed=seed) if watermark else None for seed in seeds]
+     states = [DecodeState(grammar) for _ in range(batch)]
+     tokens: list[list[int]] = [[] for _ in range(batch)]
+     keyed = [0] * batch
+@@ -83,7 +91,7 @@ def generate(model, tokenizer, cfg, prompts: list[str], seeds: list[int], waterm
+         logits = logits.float().cpu().numpy()
+         next_tokens = []
+         for row, sample in enumerate(alive):
+-            token, was_keyed = watermarked_step(states[sample], logits[row], watermark, rngs[sample], top_p=top_p, temperature=temperature)
++            token, was_keyed = watermarked_step(states[sample], logits[row], watermarks[sample], rngs[sample], top_p=top_p, temperature=temperature)
+             keyed[sample] += was_keyed
+             tokens[sample].append(token)
+             if token != 0:
+@@ -97,7 +105,8 @@ def generate(model, tokenizer, cfg, prompts: list[str], seeds: list[int], waterm
+         alive = [alive[row] for row in keep]
+         pixel_seq, xy_seq = pixel_seq[keep], xy_seq[keep]
+     elapsed = time.time() - started
+-    return [{"prompt": p, "seed": s, "tokens": t, "keyed_steps": k, "svg": st.svg(), "seconds": elapsed / batch}
++    return [{"prompt": p, "seed": s, "tokens": t, "keyed_steps": k, "svg": st.svg(), "seconds": elapsed / batch,
++             "completed": bool(t and t[-1] == 0), "truncated": not bool(t and t[-1] == 0)}
+             for p, s, t, k, st in zip(prompts, seeds, tokens, keyed, states)]
+ 
+ 
+@@ -117,15 +126,35 @@ def main() -> None:
+     args = parser.parse_args()
+     if not 0 <= args.shard < args.num_shards:
+         raise SystemExit("--shard must be in [0, --num-shards)")
++    if args.batch < 1 or args.samples_per_prompt < 1 or args.max_tokens < 1:
++        raise SystemExit("batch, samples-per-prompt and max-tokens must be positive")
+     device = torch.device(args.device)
+-    model, tokenizer, cfg = load_model(device)
+     key = hashlib.sha256(b"iconshop-geosample-evaluation-key").digest()
+     wrong = hashlib.sha256(b"iconshop-geosample-wrong-key").digest()
+     args.output.mkdir(parents=True, exist_ok=True)
+     # One log per shard so concurrent GPU workers never write the same file;
+     # merge with: cat samples.shard*.jsonl > samples.jsonl
+     log = args.output / (f"samples.shard{args.shard}.jsonl" if args.num_shards > 1 else "samples.jsonl")
+-    done = {(r["prompt"], r["seed"], r["marked"]) for r in map(json.loads, log.read_text().splitlines())} if log.exists() else set()
++    files = sorted((ROOT / "src/contourmark").glob("*.py")) + [Path(__file__), ROOT / "experiments/run_identity.py"]
++    files += sorted((ROOT / "models/iconshop").rglob("*.py"))
++    files += [ROOT / "models/iconshop" / name for name in ("config.json", "model.safetensors", "word_embedding_512.pt")]
++    configuration = {
++        "schema": "iconshop-geosample-run-v2", "prompts": args.prompts,
++        "seed_base": args.seed_base, "samples_per_prompt": args.samples_per_prompt,
++        "top_p": args.top_p, "temperature": args.temperature, "max_tokens": args.max_tokens,
++        "shard": args.shard, "num_shards": args.num_shards, "device": str(device),
++        "watermark": asdict(GeoParameters()), "key_id": hashlib.sha256(key).hexdigest(),
++        "files": {str(path.relative_to(ROOT)): file_digest(path) for path in files},
++        "packages": {name: importlib.metadata.version(name) for name in ("torch", "transformers", "numpy", "scipy")},
++    }
++    run_id = prepare_run(log, configuration)
++    records = [json.loads(line) for line in log.read_text().splitlines() if line.strip()] if log.exists() else []
++    if any(r.get("run_id") != run_id for r in records):
++        raise ValueError("sample log contains mismatched run identities")
++    done = {(r["prompt"], r["seed"], r["marked"]) for r in records if (args.output / r["file"]).exists()}
++    if len(done) != len(records):
++        raise ValueError("duplicate or missing sample artifacts; repair log before resuming")
++    model, tokenizer, cfg = load_model(device)
+     jobs = [(p, args.seed_base + i) for p in args.prompts for i in range(args.samples_per_prompt)]
+     jobs = jobs[args.shard::args.num_shards]
+     for marked in (False, True):
+@@ -140,7 +169,7 @@ def main() -> None:
+                     (args.output / name).write_bytes(result["svg"])
+                     check = detect(result["svg"], key)
+                     record = {k: v for k, v in result.items() if k != "svg"}
+-                    record.update({"marked": marked, "file": name, "log10_p": check["log10_p_value"], "distinct_vertices": check["distinct_vertices"],
++                    record.update({"run_id": run_id, "marked": marked, "file": name, "log10_p": check["log10_p_value"], "distinct_vertices": check["distinct_vertices"],
+                                    "wrong_key_log10_p": detect(result["svg"], wrong)["log10_p_value"], "top_p": args.top_p, "temperature": args.temperature})
+                     stream.write(json.dumps(record) + "\n")
+             print(f"{'marked' if marked else 'plain'} {start + len(chunk)}/{len(todo)}", flush=True)
+diff --git a/hpc/generate_iconshop.sbatch b/hpc/generate_iconshop.sbatch
+index 1171fdd..2023bfa 100644
+--- a/hpc/generate_iconshop.sbatch
++++ b/hpc/generate_iconshop.sbatch
+@@ -21,12 +21,21 @@ cd experiments
+ for TOP_P in $TOP_PS; do
+   OUT="results/geosample/iconshop_p${TOP_P/./}"
+   mkdir -p "$OUT"
++  PIDS=()
+   for SHARD in $(seq 0 $((GPUS - 1))); do
+     CUDA_VISIBLE_DEVICES=$SHARD ../.venv/bin/python iconshop_geosample.py \
+       --output "$OUT" --top-p "$TOP_P" --samples-per-prompt "$SEEDS" --batch "$BATCH" \
+       --device cuda --shard "$SHARD" --num-shards "$GPUS" > "../hpc/logs/gen_p${TOP_P}_shard${SHARD}.log" 2>&1 &
++    PIDS+=("$!")
+   done
+-  wait
++  FAILED=0
++  for PID in "${PIDS[@]}"; do
++    wait "$PID" || FAILED=1
++  done
++  if [ "$FAILED" -ne 0 ]; then
++    echo "generation shard failed; refusing to merge partial results" >&2
++    exit 1
++  fi
+   cat "$OUT"/samples.shard*.jsonl > "$OUT/samples.jsonl"
+   echo "top_p=$TOP_P: $(wc -l < "$OUT/samples.jsonl") samples in $OUT"
+ done
+diff --git a/src/contourmark/cli.py b/src/contourmark/cli.py
+index 46738ca..f783635 100644
+--- a/src/contourmark/cli.py
++++ b/src/contourmark/cli.py
+@@ -11,7 +11,7 @@ from pathlib import Path
+ from .core import Parameters, WatermarkError, embed, generate_key, read_key, verify
+ from .blind import BlindGenerationSession, detect_blind
+ from .capacity import assess_svg
+-from .geometry import GeometryError
++from .geometry import GeometryError, UnsupportedSVGError
+ from .inference import Candidate, GenerationSession, verify_generation
+ from .spectral import SpectralParameters
+ from .spectral import detect as spectral_detect
+@@ -176,6 +176,9 @@ def main(argv: list[str] | None = None) -> int:
+         result = verify(args.original.read_bytes(), args.candidate.read_bytes(), json.loads(args.manifest.read_text()), key, args.null_trials)
+         print(json.dumps(result, indent=2, sort_keys=True))
+         return 0 if result["detected"] else 1
++    except UnsupportedSVGError as exc:
++        print(json.dumps({"status": "unsupported", "reason": str(exc)}))
++        return 2
+     except (WatermarkError, GeometryError, OSError, json.JSONDecodeError) as exc:
+         print(f"contourmark: {exc}", file=sys.stderr)
+         return 2
+diff --git a/src/contourmark/geometry.py b/src/contourmark/geometry.py
+index ec48e40..c12b12e 100644
+--- a/src/contourmark/geometry.py
++++ b/src/contourmark/geometry.py
+@@ -27,6 +27,38 @@ class GeometryError(ValueError):
+     pass
+ 
+ 
++class UnsupportedSVGError(GeometryError):
++    """The geometric detector cannot interpret this document's appearance."""
++
++
++def require_supported_effects(root: ET.Element) -> None:
++    """Reject appearance features that can hide or replace scored geometry.
++
++    This is a conservative gate, not a renderer or an occlusion proof. Keep
++    raw geometry parsing available for analysis, but call this before marking
++    or scoring. Unsupported must not be interpreted as an unmarked document.
++    """
++    unsupported = {"style", "script", "text", "image", "foreignObject",
++                   "animate", "animateTransform", "animateMotion", "set"}
++    for element in root.iter():
++        name = tag(element)
++        if name in unsupported or (name == "svg" and element is not root):
++            raise UnsupportedSVGError(f"unsupported SVG appearance element: {name}")
++        if name == "use":
++            raise UnsupportedSVGError("unsupported SVG appearance element: use (resolve instances first)")
++        declarations = dict(element.attrib)
++        for part in element.get("style", "").split(";"):
++            if ":" in part:
++                prop, value = part.split(":", 1)
++                declarations[prop.strip().lower()] = value.strip()
++        for prop in ("clip-path", "mask", "filter"):
++            value = declarations.get(prop, "none").strip().lower()
++            if value != "none":
++                raise UnsupportedSVGError(f"unsupported SVG appearance property: {prop}")
++        if any("var(" in value.lower() for value in declarations.values()):
++            raise UnsupportedSVGError("unsupported SVG CSS variable")
++
++
+ SVG_NS = "http://www.w3.org/2000/svg"
+ XLINK_NS = "http://www.w3.org/1999/xlink"
+ _NUMBER = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?"
+diff --git a/src/contourmark/geosample.py b/src/contourmark/geosample.py
+index a2e1046..0f643a0 100644
+--- a/src/contourmark/geosample.py
++++ b/src/contourmark/geosample.py
+@@ -1,4 +1,4 @@
+-"""Inference-time, distribution-preserving watermarking for SVG generators.
++"""Inference-time geometric watermarking for SVG generators.
+ 
+ Text watermarks key the *choice of the next token*.  For SVG that is not
+ enough: optimizers rewrite every token while keeping the drawing.  This
+@@ -13,12 +13,13 @@ formed by the previous arm and the new arm.  Its descriptor
+      incident segments)
+ 
+ is invariant to translation, rotation, uniform scale, mirroring, traversal
+-direction, command syntax and numeric precision.  Candidates are grouped by
++direction and command syntax. Rounding can cross descriptor bins. Candidates are grouped by
+ quantized descriptor; each group gets a keyed uniform ``u_b = PRF_K(b)``; the
+ group is chosen by Gumbel-max on group probability mass, and the token inside
+-the group by ordinary sampling.  In the random-PRF idealization the next-token
+-distribution is exactly unchanged (the same argument as SynthID-Text and
+-Aaronson's scheme), so marking costs no quality in expectation.
++the group by ordinary sampling. The fixed-context one-step distribution is
++preserved over independent keyed scores. Reusing descriptor scores across
++adaptive decoding steps does NOT preserve the full autoregressive law;
++quality and diversity must be measured.
+ 
+ Detection needs only the final SVG and the key: re-extract vertex
+ descriptors from the drawn geometry, look up ``u_b`` for each *distinct*
+@@ -42,7 +43,7 @@ from typing import Sequence
+ import numpy as np
+ from scipy.special import gammaincc
+ 
+-from .geometry import GeometryError, apply_affine, closes, dense_points, load_document
++from .geometry import GeometryError, apply_affine, closes, dense_points, load_document, require_supported_effects
+ 
+ 
+ @dataclass(frozen=True)
+@@ -262,7 +263,7 @@ class Choice:
+ 
+ 
+ class GeoWatermark:
+-    """Keyed, distribution-preserving choice among candidate endpoints."""
++    """Keyed choice among candidate endpoints; see the one-step caveat above."""
+ 
+     def __init__(self, key: bytes, params: GeoParameters | None = None, seed: int | None = None):
+         if len(key) < 16:
+@@ -279,7 +280,7 @@ class GeoWatermark:
+         ``probabilities`` its (already truncated, temperature-scaled) model
+         probability.  Candidates that create no vertex (including ``None``
+         ends, i.e. non-point tokens) compete with fresh unkeyed uniforms, so
+-        the overall distribution is still unchanged.
++        the fixed-context one-step distribution is preserved over fresh scores.
+         """
+         before = tracker.merged_history()
+         descriptors = [tracker.candidate_descriptor(end, controls[i] if controls else (), before) for i, end in enumerate(ends)]
+@@ -328,6 +329,7 @@ class GeoWatermark:
+ def document_descriptors(source: bytes, params: GeoParameters) -> list[list[tuple]]:
+     """Vertex descriptors per visible contour, from drawn geometry only."""
+     document = load_document(source)
++    require_supported_effects(document.root)
+     out = []
+     for contour in document.contours:
+         if not contour.visible:
+diff --git a/src/contourmark/spectral.py b/src/contourmark/spectral.py
+index a914a92..26b1f0d 100644
+--- a/src/contourmark/spectral.py
++++ b/src/contourmark/spectral.py
+@@ -46,6 +46,7 @@ from .geometry import (
+     apply_linear_inverse,
+     dense_points,
+     load_document,
++    require_supported_effects,
+     parse_path_data,
+     arc_to_cubics,
+     resample,
+@@ -331,6 +332,7 @@ def detect(source: bytes, key: bytes, params: SpectralParameters | None = None)
+     if len(key) < 16:
+         raise GeometryError("key must contain at least 16 bytes")
+     document = load_document(source)
++    require_supported_effects(document.root)
+     observations = observe(document, params)
+     result = score(observations, key, params)
+     result.update({
+@@ -681,6 +683,7 @@ def embed(source: bytes, key: bytes, params: SpectralParameters | None = None, c
+         raise GeometryError(f"invalid SVG XML: {exc}") from exc
+     ET.register_namespace("", SVG_NS)
+     ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
++    require_supported_effects(root)
+     if convert_shapes:
+         _shapes_to_paths(root)
+     document = load_document(root)
+diff --git a/experiments/run_identity.py b/experiments/run_identity.py
+new file mode 100644
+index 0000000..c70960d
+--- /dev/null
++++ b/experiments/run_identity.py
+@@ -0,0 +1,32 @@
++"""Immutable identities for resumable experiments (no model dependency)."""
++from __future__ import annotations
++
++import hashlib
++import json
++from pathlib import Path
++
++
++def file_digest(path: Path) -> str:
++    digest = hashlib.sha256()
++    with path.open("rb") as stream:
++        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
++            digest.update(chunk)
++    return digest.hexdigest()
++
++
++def prepare_run(log: Path, configuration: dict) -> str:
++    """Refuse to append to a log made with another or unknown configuration."""
++    encoded = json.dumps(configuration, sort_keys=True, separators=(",", ":"))
++    run_id = hashlib.sha256(encoded.encode()).hexdigest()
++    manifest = log.with_suffix(".run.json")
++    payload = {"run_id": run_id, "configuration": configuration}
++    if manifest.exists():
++        if json.loads(manifest.read_text()) != payload:
++            raise ValueError(f"run configuration changed; use a new output directory: {manifest}")
++    else:
++        if log.exists() and log.stat().st_size:
++            raise ValueError(f"cannot resume legacy log without run identity: {log}")
++        manifest.parent.mkdir(parents=True, exist_ok=True)
++        with manifest.open("x") as stream:
++            stream.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
++    return run_id
