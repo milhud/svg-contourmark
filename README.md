@@ -21,6 +21,34 @@ Known limits, measured in `experiments/results/blind/`:
 
 Legacy modes (`sample-blind`, `embed`/`verify`) are kept for comparison. See [literature review](docs/literature.md) and [HANDOFF.md](HANDOFF.md) for the current state of the project.
 
+## Inference-time watermark (`geosample`)
+
+A second, distortion-free mode for generators whose decoder you control. It works like text watermarking (SynthID / Gumbel sampling), but keys a **geometric** quantity instead of token IDs, so detection survives SVGO, Scour, rounding, reordering, reversal, and similarity transforms.
+
+- **Keyed choices.** At each line/curve endpoint, the model's candidate tokens are grouped by the corner (vertex) descriptor they create: interior angle, arm-length ratio, and summed bulge. At each curve's first control point, they are grouped by the tangent descriptor at that corner.
+- **Distribution preserved.** A keyed Gumbel-max draw over groups, followed by ordinary sampling within the group, leaves the model's next-token distribution unchanged.
+- **Detection** needs only the final SVG and the key. It uses an exact Gamma null over distinct descriptors (`contourmark.geosample.detect`).
+- **Models.** Any point-token SVG model via a small grammar adapter (`contourmark.point_token_models`):
+  - IconShop: run here with the public checkpoint.
+  - OmniSVG: adapter implemented and tested on synthetic streams.
+  - Anything decoded through Hugging Face `generate`, via `GeoWatermarkLogitsProcessor`.
+
+```python
+from contourmark.geosample import GeoWatermark, detect
+from contourmark.point_token_models import DecodeState, IconShopGrammar, watermarked_step
+
+state, wm = DecodeState(IconShopGrammar()), GeoWatermark(key)
+while True:                                   # your decoder loop
+    logits = model_next_token_logits(...)     # over the point-token vocabulary
+    token, _ = watermarked_step(state, logits, wm, rng, top_p=0.9)
+    if token == 0: break
+    state.feed(token)
+svg = state.svg()
+detect(svg, key)["p_value"]
+```
+
+For `model.generate(...)`, pass `GeoWatermarkLogitsProcessor(grammar, GeoWatermark(key), prompt_length, top_p=...)` with `do_sample=True`. Truncation is configured on the processor. See [docs/inference-watermark.md](docs/inference-watermark.md) for definitions, the distribution-preservation proof, the adapter contract, and limits: non-uniform scaling, retracing, low-entropy decoding, and text LLMs needing a number-level adapter.
+
 ## Install and run
 
 ```sh

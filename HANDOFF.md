@@ -307,3 +307,61 @@ Ordered by importance:
   run used a baseline that corrupted arc flags). The summarizer merges them,
   later files winning.
 * Ollama was started only for generation and has been stopped.
+
+
+---
+
+## 10. Inference-time watermark (geosample) — added 30 Sep 2026 (evening)
+
+A second, independent architecture. Like SynthID-Text or Gumbel text watermarks it keys the *sampling choice*, but the keyed quantity is drawn geometry, not a token id, so SVG rewriting does not erase it. Works with any point-token SVG generator: IconShop, OmniSVG, or anything exposing logits via Hugging Face `generate`.
+
+* **Core:** `src/contourmark/geosample.py`.
+  * At each segment endpoint, candidate tokens are grouped by a quantized **vertex descriptor**: interior angle, |log arm ratio|, and summed bulge.
+  * At each curve's first control point, they are grouped by a **tangent descriptor**: handle angle and |log handle ratio|.
+  * A group is chosen by keyed Gumbel-max on group mass, then a token inside it by ordinary sampling.
+  * The next-token distribution is unchanged in the random-PRF idealization.
+  * Detection needs only the SVG and the key. It uses an exact Gamma(n,1) null over distinct descriptors, plus a 2× Bonferroni per-contour test.
+* **Adapters:** `src/contourmark/point_token_models.py`.
+  * `IconShopGrammar` (tested on the real checkpoint).
+  * `OmniSVGGrammar` (token ids from OmniSVG `config.yaml`; not run on real weights).
+  * `DecodeState` and `watermarked_step`.
+  * `GeoWatermarkLogitsProcessor`, a HF `LogitsProcessor` tested inside `model.generate` with a tiny GPT-2.
+* **Docs:** `docs/inference-watermark.md`, covering the design, proofs, adapter contract, invariances, and results so far. README has a section too.
+* **Tests:**
+  * `tests/test_geosample.py`, 24 tests: distribution preservation over 6,000 keys, null super-uniformity, toy-generator detection and invariances, grammars, HF processor.
+  * `tests/test_hf_generate.py`, 1 test.
+  * Full suite: 90 passing.
+* **Experiments:**
+  * `experiments/iconshop_geosample.py`: plain vs marked IconShop generation, sharded across GPUs.
+  * `evaluate_geosample.py`, `summarize_geosample.py`, `geosample_null.py`.
+
+### Results so far
+
+* **Toy generator** (about 70 descriptors per drawing):
+  * Clean: log10 p −39 to −50.
+  * Unchanged under SVGO, Scour, 1–2 dp rounding, rotation/scale/mirror/translate, reverse, restart, reorder, merge, split.
+  * Degraded but present under subdivision (about −8 to −10) and 0.1% noise (−11 to −18).
+  * Fails under aspect stretch, polyline flattening, and retracing.
+* **Null on 900 human icons**, v+t descriptors, 267,000 tests (`results/geosample/null_corpus.json`):
+  * Rate 0.063 / 0.0068 / 0.00071 / 7.5e-5 / 3.7e-6 at α = 1e-1…1e-5. Valid.
+* **Real IconShop pilot** (4 prompts, top-p 0.5):
+  * Every keyed descriptor is recovered from the SVG.
+  * Per-icon log10 p −3.5 to −4.7.
+  * Power is limited by low per-step entropy at IconShop's default top-p 0.5: about 1 nat per keyed step, versus about 1.9 at 0.9.
+* **The full IconShop run was stopped** locally (no KV cache, about 2 min per batch on Apple MPS). It moves to the cluster.
+
+### Next: run on HPC
+
+**See `hpc/README.md`.** Clone the branch, run `bash hpc/setup.sh`, smoke-test on one GPU, then:
+* `sbatch hpc/generate_iconshop.sbatch` — 4 GPUs; top-p 0.5/0.9/1.0; 30 prompts × 16 seeds; plain and marked.
+* `sbatch hpc/evaluate_geosample.sbatch` — CPU job: attacks, summaries, nulls.
+
+Bring back `experiments/results/geosample/`, then fill the Results TODO in `docs/inference-watermark.md`, this file, and the paper.
+
+### Open items for the inference-time scheme
+
+1. A number-level adapter for text LLMs that write SVG code (StarVector, chat models).
+2. Keying the second control point.
+3. A bias-mode (green-list δ) option for low-entropy decoders.
+4. A real OmniSVG run on GPUs.
+5. A quality study: plain vs marked are distributionally identical in theory; check FID/CLIP or a human study.

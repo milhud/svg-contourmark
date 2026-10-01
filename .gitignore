@@ -11,3 +11,5 @@ node_modules/
 experiments/results/probe.*
 models/
 *.safetensors
+hpc/logs/
+.hf_cache/
