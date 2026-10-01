@@ -1,0 +1,24 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="compass-clip">
+      <path d="M16,48 C16,48 4,40 4,16 C4,4 24,4 24,4 C24,4 44,4 44,16 C44,40 32,48 32,48 C32,48 16,48 16,48 Z" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#compass-clip)">
+    <!-- Outer Ring -->
+    <path d="M16,48 L4,40 L4,16 L24,4 L44,16 L44,40 L32,48 L16,48 Z" fill="#2E8B57" stroke="#1A5235" stroke-width="1.5" />
+    <!-- Inner Ring -->
+    <path d="M20,48 L16,44 L16,36 L24,36 L28,40 L36,40 L36,48 L32,48 Z" fill="#5F9EA0" stroke="#3A7D8A" stroke-width="1.5" />
+    <!-- Center Dial -->
+    <ellipse cx="32" cy="32" rx="14" ry="12" fill="#F4A460" stroke="#B8860B" stroke-width="2" />
+    <!-- Direction Indicators (Curved Paths) -->
+    <path d="M28,28 Q32,24 36,28" fill="none" stroke="#FFD700" stroke-width="2.5" />
+    <path d="M28,40 Q32,36 36,40" fill="none" stroke="#FFD700" stroke-width="2.5" />
+    <path d="M32,32 Q28,36 32,40" fill="none" stroke="#FFD700" stroke-width="2.5" />
+    <path d="M32,32 Q36,36 32,40" fill="none" stroke="#FFD700" stroke-width="2.5" />
+    <!-- Needle Base -->
+    <path d="M26,28 L28,28 L30,28 L32,28 L34,28 L36,28 L38,28" fill="#333333" />
+    <!-- Needle Tip (Curved) -->
+    <path d="M32,28 Q34,24 36,26 Q36,30 34,32 Q32,34 30,32 Q28,30 28,28 Q26,26 28,24 Q30,22 32,24 Z" fill="#FF4500" stroke="#000000" stroke-width="1" />
+  </g>
+</svg>

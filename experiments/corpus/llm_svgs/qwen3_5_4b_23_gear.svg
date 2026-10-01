@@ -1,0 +1,16 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="gearClip">
+      <circle cx="32" cy="32" r="26"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#gearClip)" transform="translate(32, 32)">
+    <!-- Main Gear Body -->
+    <path d="M 26 26 L 38 30 L 34 44 L 46 48 L 50 34 L 62 38 L 58 52 L 44 56 L 38 42 L 26 46 L 18 42 L 12 56 L 0 52 L 4 38 L 16 34 L 12 48 L 24 44 Z" fill="#FF6B6B"/>
+    <!-- Inner Decorative Ring -->
+    <circle cx="0" cy="0" r="14" fill="#4ECDC4"/>
+    <!-- Center Hub -->
+    <circle cx="0" cy="0" r="6" fill="#FFE66D"/>
+  </g>
+  <rect x="0" y="0" width="64" height="64" fill="#F7F7F7"/>
+</svg>

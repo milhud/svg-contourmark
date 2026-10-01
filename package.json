@@ -4,6 +4,15 @@
   "version": "0.1.0",
   "description": "Optional SVGO evaluation dependency for ContourMark",
   "devDependencies": {
+    "@fortawesome/fontawesome-free": "^7.3.1",
+    "@material-design-icons/svg": "^0.14.15",
+    "@primer/octicons": "^19.38.0",
+    "@tabler/icons": "^3.48.0",
+    "bootstrap-icons": "^1.13.1",
+    "lucide-static": "^1.49.0",
+    "openmoji": "^17.0.0",
+    "remixicon": "^4.9.1",
+    "simple-icons": "^16.33.0",
     "svgo": "^4.1.0"
   }
 }

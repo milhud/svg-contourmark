@@ -1,0 +1,30 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="mountain-clip">
+      <path d="M0 42 C 16 20, 32 20, 48 42 L 64 42 Z" />
+    </clipPath>
+  </defs>
+  <g>
+    <!-- Foreground grass -->
+    <path d="M0 42 C 16 20, 32 20, 48 42 L 64 42 L 64 64 L 0 64 Z" fill="#4CAF50" />
+    
+    <!-- Clouds -->
+    <ellipse cx="24" cy="12" rx="12" ry="6" fill="#E0F7FA" />
+    <ellipse cx="40" cy="18" rx="10" ry="5" fill="#E0F7FA" />
+    <circle cx="14" cy="10" r="3" fill="#E0F7FA" />
+    
+    <!-- Mountain Group -->
+    <g clip-path="url(#mountain-clip)">
+      <!-- Back Mountain -->
+      <path d="M0 42 C 16 20, 32 20, 48 42 L 64 42 Z" fill="#FF5722" />
+      <path d="M16 20 Q 32 5, 48 20" fill="#E64A19" />
+      
+      <!-- Foreground Mountain -->
+      <path d="M0 42 Q 16 25, 32 28 Q 48 35, 64 42 L 64 42 Z" fill="#FFEB3B" />
+      <path d="M16 25 Q 32 30, 48 35" fill="#FBC02D" />
+    </g>
+    
+    <!-- Sun -->
+    <circle cx="48" cy="8" r="6" fill="#FF9800" />
+  </g>
+</svg>

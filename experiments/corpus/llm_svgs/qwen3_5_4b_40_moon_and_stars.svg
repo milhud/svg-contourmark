@@ -1,0 +1,18 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .moon { fill: #F0F4F8; }
+      .star1 { fill: #FFD93D; }
+      .star2 { fill: #FFE57F; }
+      .star3 { fill: #FFAA44; }
+    </style>
+  </defs>
+  <g>
+    <path class="moon" d="M32 10c-16 0-30 10-30 30 0 15 10 28 24 32 6 2 12 3 18 3 20 0 30-14 30-30 0-16-10-30-30-30z" />
+    <circle class="star1" cx="40" cy="20" r="2" />
+    <circle class="star2" cx="24" cy="32" r="2" />
+    <circle class="star3" cx="28" cy="42" r="2" />
+    <circle class="star1" cx="52" cy="36" r="2" />
+    <circle class="star2" cx="14" cy="46" r="2" />
+  </g>
+</svg>

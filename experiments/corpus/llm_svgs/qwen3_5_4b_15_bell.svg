@@ -1,0 +1,13 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bellGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF8E53;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <g fill="url(#bellGradient)" fill-opacity="0.9">
+    <path d="M24 40c-10 0-16 4-16 10v10h24v-10c0-6-6-10-16-10zm16-20c-8 0-14 4-14 10v5h28v-5c0-6-6-10-14-10z"/>
+    <path d="M32 25c-4 0-8 2-8 5s4 5 8 5 8-2 8-5-4-5-8-5z"/>
+    <path d="M32 10c-6 0-10 4-10 8v2h20v-2c0-4-4-8-10-8z"/>
+  </g>
+</svg>

@@ -9,3 +9,5 @@ node_modules/
 *.key
 *.wm.json
 experiments/results/probe.*
+models/
+*.safetensors

@@ -1,0 +1,72 @@
+{
+  "asset": "experiments/results/qwen_sunburst_64.svg",
+  "methods": {
+    "contourmark_assisted": {
+      "original": {
+        "detected": true,
+        "conditional_detected": true,
+        "conditional_p_value": 5.421010862427522e-20,
+        "conservative_p_value": 5.421010862427522e-20
+      },
+      "round_path_2_decimals": {
+        "detected": true,
+        "conditional_detected": true,
+        "conditional_p_value": 5.421010862427522e-20,
+        "conservative_p_value": 5.421010862427522e-20
+      },
+      "scour": {
+        "detected": true,
+        "conditional_detected": true,
+        "conditional_p_value": 5.421010862427522e-20,
+        "conservative_p_value": 5.421010862427522e-20
+      },
+      "svgo": {
+        "detected": true,
+        "conditional_detected": true,
+        "conditional_p_value": 5.421010862427522e-20,
+        "conservative_p_value": 5.421010862427522e-20
+      }
+    },
+    "xml_comment_metadata": {
+      "original": {
+        "detected": true
+      },
+      "round_path_2_decimals": {
+        "detected": true
+      },
+      "scour": {
+        "detected": true
+      },
+      "svgo": {
+        "detected": false
+      }
+    },
+    "numeric_coordinate_lsb": {
+      "original": {
+        "detected": true,
+        "matches": 64,
+        "chips": 64,
+        "p_value": 5.421010862427522e-20
+      },
+      "round_path_2_decimals": {
+        "detected": false,
+        "matches": 23,
+        "chips": 64,
+        "p_value": 0.9915709049778594
+      },
+      "scour": {
+        "detected": false,
+        "matches": 20,
+        "chips": 64,
+        "p_value": 0.999218605327586
+      },
+      "svgo": {
+        "detected": true,
+        "matches": 64,
+        "chips": 64,
+        "p_value": 5.421010862427522e-20
+      }
+    }
+  },
+  "scope": "One generated asset and benign rewrites; adaptive and diverse-asset experiments remain required."
+}

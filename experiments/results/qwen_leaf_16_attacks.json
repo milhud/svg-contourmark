@@ -4,6 +4,7 @@
   "attacks": {
     "original": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -18,6 +19,7 @@
     },
     "reorder_paths": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -31,7 +33,8 @@
       "changed_pixel_fraction": 0.0004730224609375
     },
     "delete_first_4": {
-      "detected": true,
+      "detected": false,
+      "conditional_detected": true,
       "matched_steps": 12,
       "recognized_steps": 12,
       "total_steps": 16,
@@ -46,6 +49,7 @@
     },
     "translate_all_0.25_unit": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -60,6 +64,7 @@
     },
     "translate_all_0.5_unit": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -74,6 +79,7 @@
     },
     "translate_all_1_unit": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -88,6 +94,7 @@
     },
     "alternating_translate_0.5_unit": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -102,6 +109,7 @@
     },
     "control_perturb_0.25_unit": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -116,6 +124,7 @@
     },
     "control_perturb_0.5_unit": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -130,6 +139,7 @@
     },
     "control_perturb_0.625_unit": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -144,6 +154,7 @@
     },
     "control_perturb_0.75_unit": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -158,6 +169,7 @@
     },
     "control_perturb_1_unit": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -172,6 +184,7 @@
     },
     "control_perturb_1.5_unit": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 15,
       "recognized_steps": 15,
       "total_steps": 16,
@@ -185,7 +198,8 @@
       "changed_pixel_fraction": 0.037509918212890625
     },
     "control_perturb_2_unit": {
-      "detected": true,
+      "detected": false,
+      "conditional_detected": true,
       "matched_steps": 13,
       "recognized_steps": 13,
       "total_steps": 16,
@@ -199,7 +213,8 @@
       "changed_pixel_fraction": 0.0413360595703125
     },
     "control_perturb_3_unit": {
-      "detected": true,
+      "detected": false,
+      "conditional_detected": true,
       "matched_steps": 11,
       "recognized_steps": 12,
       "total_steps": 16,
@@ -214,6 +229,7 @@
     },
     "control_perturb_4_unit": {
       "detected": false,
+      "conditional_detected": false,
       "matched_steps": 9,
       "recognized_steps": 10,
       "total_steps": 16,
@@ -228,6 +244,7 @@
     },
     "control_perturb_6_unit": {
       "detected": false,
+      "conditional_detected": false,
       "matched_steps": 1,
       "recognized_steps": 1,
       "total_steps": 16,
@@ -242,6 +259,7 @@
     },
     "control_perturb_8_unit": {
       "detected": false,
+      "conditional_detected": false,
       "matched_steps": 0,
       "recognized_steps": 0,
       "total_steps": 16,
@@ -256,6 +274,7 @@
     },
     "control_perturb_12_unit": {
       "detected": false,
+      "conditional_detected": false,
       "matched_steps": 0,
       "recognized_steps": 0,
       "total_steps": 16,
@@ -270,6 +289,7 @@
     },
     "scour": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,
@@ -284,6 +304,7 @@
     },
     "svgo": {
       "detected": true,
+      "conditional_detected": true,
       "matched_steps": 16,
       "recognized_steps": 16,
       "total_steps": 16,

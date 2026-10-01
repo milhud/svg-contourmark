@@ -63,6 +63,8 @@ def main() -> None:
     source = args.svg.read_bytes()
     manifest = json.loads(args.manifest.read_text())
     key = read_key(args.key)
+    svg_name = str(args.svg.resolve().relative_to(ROOT))
+    manifest_sha256 = hashlib.sha256(args.manifest.read_bytes()).hexdigest()
     attacks = {
         "original": source,
         "reorder_paths": reordered(source),
@@ -84,6 +86,10 @@ def main() -> None:
         "control_perturb_8_unit": perturbed_controls(source, 8.0),
         "control_perturb_12_unit": perturbed_controls(source, 12.0),
     }
+    if len(manifest.get("steps", [])) >= 32:
+        for count in (8, 16, 24, 32):
+            if count < len(manifest["steps"]):
+                attacks[f"delete_first_{count}"] = deleted(source, count)
     scour = ROOT / ".venv/bin/scour"
     if scour.exists():
         attacks["scour"] = optimized(source, [str(scour), "-i", "{input}", "-o", "{output}", "--indent=none"])
@@ -91,11 +97,32 @@ def main() -> None:
     if svgo.exists():
         attacks["svgo"] = optimized(source, [str(svgo), "{input}", "-o", "{output}"])
     results = {}
+    if args.output.exists():
+        checkpoint = json.loads(args.output.read_text())
+        if checkpoint.get("status") == "in_progress" and checkpoint.get("svg") == svg_name and checkpoint.get("manifest_sha256") == manifest_sha256:
+            results = checkpoint.get("attacks", {})
+            print(f"resumed {len(results)}/{len(attacks)} attack results", flush=True)
+
+    def write_report(status: str) -> None:
+        report = {
+            "status": status,
+            "svg": svg_name,
+            "manifest_sha256": manifest_sha256,
+            "attacks": results,
+            "note": "Single asset, fixed edits, and 512px librsvg pixel metrics; not a perceptual study or superiority claim.",
+        }
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(report, indent=2) + "\n")
+
+    write_report("in_progress")
     for name, candidate in attacks.items():
+        if name in results:
+            continue
         try:
             check = verify_generation(candidate, manifest, key)
             results[name] = {
                 "detected": check["detected"],
+                "conditional_detected": check["conditional_detected"],
                 "matched_steps": check["matched_steps"],
                 "recognized_steps": check["recognized_steps"],
                 "total_steps": check["total_steps"],
@@ -108,14 +135,9 @@ def main() -> None:
         results[name]["svg_bytes"] = len(candidate)
         results[name]["paired_geometry_rms_fraction"] = None if name == "reorder_paths" else paired_geometry_rms(source, candidate)
         results[name].update(render_metrics(source, candidate))
-    report = {
-        "svg": str(args.svg.resolve().relative_to(ROOT)),
-        "manifest_sha256": hashlib.sha256(args.manifest.read_bytes()).hexdigest(),
-        "attacks": results,
-        "note": "Single asset, fixed edits, and 512px librsvg pixel metrics; not a perceptual study or superiority claim.",
-    }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2) + "\n")
+        write_report("in_progress")
+    write_report("completed")
+    report = json.loads(args.output.read_text())
     print(json.dumps(report, indent=2))
 
 

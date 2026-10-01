@@ -1,0 +1,11 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="starGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4ECDC4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <g fill="url(#starGradient)">
+    <path d="M32 2 L40.5 19.5 L58 19.5 L39 36.5 L47.5 54 L32 39 L16.5 54 L25 36.5 L6 19.5 L23.5 19.5 L32 2 Z" />
+  </g>
+</svg>

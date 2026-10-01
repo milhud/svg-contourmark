@@ -3,8 +3,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from svgpathtools import Path as SVGPath, parse_path
 
-from contourmark.core import Parameters, WatermarkError, embed, verify
+from contourmark.core import Parameters, WatermarkError, _sample, embed, verify
 
 
 EXAMPLE = (Path(__file__).parents[1] / "examples" / "flower.svg").read_bytes()
@@ -59,3 +60,17 @@ def test_real_scour_minification(marked, tmp_path):
 def test_unsupported_svg_errors():
     with pytest.raises(WatermarkError, match="no supported"):
         embed(b'<svg xmlns="http://www.w3.org/2000/svg"><text>hello</text></svg>', KEY)
+
+
+def test_arc_length_sampling_has_a_bisection_fallback(monkeypatch):
+    path = parse_path("M0 0 C20 -10 80 10 100 0")
+
+    def fail_inversion(*_args, **_kwargs):
+        raise RuntimeError("maximum iterations")
+
+    monkeypatch.setattr(SVGPath, "ilength", fail_inversion)
+    points = _sample(path, 17)
+    assert len(points) == 17
+    assert points[0] == path.start
+    assert points[-1] == path.end
+    assert all(abs(left - right) > 0 for left, right in zip(points, points[1:]))

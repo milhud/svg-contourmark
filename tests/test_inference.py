@@ -116,9 +116,11 @@ def test_hidden_contours_do_not_count(generation):
     root = ET.fromstring(svg)
     list(root)[0].set("style", "display:none")
     result = verify_generation(ET.tostring(root), manifest, KEY)
-    assert result["detected"]
+    assert not result["detected"]
+    assert result["conditional_detected"]
     assert result["recognized_steps"] == 8
     assert result["conditional_p_value"] == pytest.approx(2 ** -8)
+    assert result["conservative_p_value"] == pytest.approx(10 / 2**9)
 
 
 def test_too_few_recognized_choices_do_not_detect(generation):
@@ -152,10 +154,29 @@ def test_gumbel_sampling_preserves_categorical_distribution():
     assert 350 < count < 450
 
 
+def test_poisson_binomial_tail_matches_exact_binary_values():
+    from contourmark.inference import _binomial_tail
+
+    assert _binomial_tail([0.5] * 16, 16) == pytest.approx(2 ** -16)
+    assert _binomial_tail([0.5] * 16, 14) == pytest.approx(137 / 2**16)
+    assert _binomial_tail([0.2, 0.7], 2) == pytest.approx(0.14)
+    assert _binomial_tail([], 0) == pytest.approx(1.0)
+
+
 def test_requires_distinct_geometry():
     session = GenerationSession(KEY, "0 0 200 200")
     with pytest.raises(WatermarkError, match="distinct geometry"):
         session.add_step([Candidate("M0 0L100 0"), Candidate("M0 0 L100 0")])
+
+
+def test_path_sampling_failure_is_a_recoverable_watermark_error(monkeypatch):
+    import contourmark.inference as inference
+
+    inference._path_points.cache_clear()
+    monkeypatch.setattr(inference, "_sample", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("numerical failure")))
+    with pytest.raises(WatermarkError, match="could not be sampled"):
+        inference._path_points("M0 0L10 10")
+    inference._path_points.cache_clear()
 
 
 def test_adaptive_acceptance_regions_remain_disjoint():

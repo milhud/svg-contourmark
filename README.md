@@ -1,13 +1,25 @@
 # ContourMark
 
-Research prototype for **generation-time SVG watermarking**. A drawing model proposes two or more visually comparable contour candidates at each step. ContourMark uses a secret key to choose one *before* that contour enters the output SVG. The mark is a statistical pattern of **geometric choices**, so XML whitespace and path command notation do not carry the evidence.
+Research prototype for **blind, representation-invariant watermarking of SVG geometry**. The target use is marking AI-generated SVG before release and detecting it later, after the file has passed through real toolchains.
 
-Two inference-time detectors are implemented:
+**Primary method (`mark` / `detect`, `src/contourmark/spectral.py`).**
+- **Works after generation, with any generator.** An LLM writing SVG code, OmniSVG, StarVector, a vectorizer, or a human designer. It needs no model access.
+- **Embedding:**
+  1. Resample each visible contour by arc length.
+  2. Compute its normalized radial function (distance to centroid over mean distance).
+  3. Move 8 mid-frequency Fourier/DCT magnitudes onto a secret dithered lattice (keyed QIM).
+- **Invariant by construction to:** SVGO/Scour rewriting, absolute/relative commands, segment subdivision, path merge/split/reorder, start point, traversal direction, translation, uniform scale, rotation, and mirroring.
+- **Detection:** needs only the SVG and the key. It returns a p-value that is a valid upper bound over the key's randomness for any SVG chosen independently of the key, so no corpus-fitted threshold is needed.
+- **Cost:** the mark moves each contour by about 0.4% of its radius (RMS) and is not visible at normal sizes.
 
-* **Manifest-free (`sample-blind` / `detect-blind`):** equal-weight alternatives are chosen with a keyed score of a coarse contour centroid. The verifier needs the key and a precommitted asset ID, but no original SVG or candidate list. The centroid quantizer has guard bands to reduce rounding failures.
-* **Candidate-assisted (`sample` / `verify-sample`):** weighted alternatives use keyed Gumbel-max sampling. The verifier uses a private authenticated candidate manifest and geometry matching. It supports partial path deletion through a Poisson-binomial score.
+Known limits, measured in `experiments/results/blind/`:
+- Heavy rounding or noise comparable to the mark amplitude removes it.
+- Aspect-ratio stretch, stroke-to-outline conversion, and rasterize-and-retrace mostly remove it.
+- Icons made only of straight lines have little or no capacity.
 
-A separate reference-assisted contour-perturbation baseline (`embed`/`verify`) is retained for comparison.
+**Zero-distortion generation-time variant (`sample` / `verify-sample`).** If a generator exposes several candidate contours per step, a keyed Gumbel-max choice marks the output without moving any geometry. Verification needs a private candidate manifest. See [research design](docs/research.md).
+
+Legacy modes (`sample-blind`, `embed`/`verify`) are kept for comparison. See [literature review](docs/literature.md) and [HANDOFF.md](HANDOFF.md) for the current state of the project.
 
 ## Install and run
 
@@ -15,6 +27,8 @@ A separate reference-assisted contour-perturbation baseline (`embed`/`verify`) i
 python3 -m venv .venv
 .venv/bin/python -m pip install -e '.[test]'
 .venv/bin/contourmark keygen owner.key
+.venv/bin/contourmark mark icon.svg icon.marked.svg --key owner.key      # blind mark, any SVG
+.venv/bin/contourmark detect icon.marked.svg --key owner.key             # needs only SVG + key
 .venv/bin/python examples/make_proposals.py > proposals.json
 .venv/bin/contourmark sample proposals.json drawing.svg --key owner.key --manifest drawing.wm.json
 .venv/bin/contourmark verify-sample drawing.svg --key owner.key --manifest drawing.wm.json

@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "contourmark"
 version = "0.1.0"
-description = "Keyed, reference-assisted geometric watermarking for SVG contours"
+description = "Blind, representation-invariant geometric watermarking for SVG"
 requires-python = ">=3.10"
-dependencies = ["svgpathtools>=1.6,<2", "scipy>=1.10,<2"]
+dependencies = ["numpy>=1.24", "scipy>=1.10,<2", "svgpathtools>=1.6,<2"]
 
 [project.optional-dependencies]
 test = ["pytest>=8", "scour>=0.38"]
-eval = ["Pillow>=10,<13"]
+eval = ["Pillow>=10,<13", "picosvg>=0.22"]
 
 [project.scripts]
 contourmark = "contourmark.cli:main"

@@ -1,0 +1,366 @@
+{
+ "seed": null,
+ "split": "llm",
+ "items": [
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_00_coffee_cup.svg",
+   "sha256": "390c911d8f172c52a48dcffa3bb70a9dfb13767a1bda89f36482380a8580b521",
+   "bytes": 812,
+   "concept": "coffee cup"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_01_rocket.svg",
+   "sha256": "8efab07366c1e98880c0b78c6b4a2ecc94af644597ca04810068a7e883f93bb9",
+   "bytes": 587,
+   "concept": "rocket"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_02_house.svg",
+   "sha256": "624d3894aa765b72d3619cfa85a6f08775573278b9ad3e3c2fa1454709650cec",
+   "bytes": 457,
+   "concept": "house"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_03_tree.svg",
+   "sha256": "33fc0207ecd705f72af1fa2101b71651449d0de1c284fdb9db1863b3a7e7c82a",
+   "bytes": 781,
+   "concept": "tree"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_04_cat_face.svg",
+   "sha256": "a217e0cd2eee785add7ca72eb79a5189bc44d69e5d1d19025351459958d14d7a",
+   "bytes": 836,
+   "concept": "cat face"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_07_camera.svg",
+   "sha256": "a0bcac203fe4e389f670893a2d63970d27736611bf3f70acc409664065bde9d8",
+   "bytes": 1117,
+   "concept": "camera"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_08_light_bulb.svg",
+   "sha256": "7c41ecf33ebca8a4396a3b8b2996bd149f065a4c09afdbc8f2d9d0e5d58b9e72",
+   "bytes": 816,
+   "concept": "light bulb"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_09_heart.svg",
+   "sha256": "2e7e7ad3de1638af62c67d3e73fd86516f655d6a748d1e9adb5b96eb416e4cb7",
+   "bytes": 735,
+   "concept": "heart"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_10_sun_with_rays.svg",
+   "sha256": "1aab17644ca2110c152f8bdad316d158b6acbe8d547c7bc64dde52b611ed39b9",
+   "bytes": 1387,
+   "concept": "sun with rays"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_11_cloud_with_rain.svg",
+   "sha256": "50921f11ab8a5a40790ef1ff39de3385730611918954e5fb6404e3b760a3bf2e",
+   "bytes": 889,
+   "concept": "cloud with rain"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_12_anchor.svg",
+   "sha256": "0054c7436de48e4311f30940ff7d2413d889d62b3a87493b0305863a84b20e29",
+   "bytes": 982,
+   "concept": "anchor"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_13_key.svg",
+   "sha256": "2e0563541d32b29ba79174be017f0f0aff5a8a78f25540f6aa7cd1c02b323119",
+   "bytes": 552,
+   "concept": "key"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_14_lock.svg",
+   "sha256": "3e94437824879488fa856d47e7a671fc2529dc39ded2cfad550dac642cd6f49d",
+   "bytes": 1347,
+   "concept": "lock"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_15_bell.svg",
+   "sha256": "e68d8003d4e37c3ccec7f8810489fd8f59b08c263bcf05deb949f7cfd11c6cc8",
+   "bytes": 614,
+   "concept": "bell"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_16_leaf.svg",
+   "sha256": "9eaccb5e55a9a885595342cede0727a441d75ae5d7dfaadef3ac0b6939a325f3",
+   "bytes": 584,
+   "concept": "leaf"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_17_flower.svg",
+   "sha256": "c1305da1d1ec343c858c6bf472f54f1cefc828def56d235f64b48750021d1055",
+   "bytes": 968,
+   "concept": "flower"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_18_fish.svg",
+   "sha256": "ca2e457083143111db6e70e16c5901a25b88d60612fd5ce9331fa26d65389c78",
+   "bytes": 775,
+   "concept": "fish"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_19_bird.svg",
+   "sha256": "7ca9c60e6ef228ae81f7f726ee5fc2bb5f270fc543bc225b9fd1dcdad6d665b8",
+   "bytes": 827,
+   "concept": "bird"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_20_mountain_landscape.svg",
+   "sha256": "e0f81e42fbf7899a9e56b54056f8901273a214df6e2cd5947a686ff06f348979",
+   "bytes": 1011,
+   "concept": "mountain landscape"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_21_sailboat.svg",
+   "sha256": "ab6aa644461ac62d2e0b78b442fc12b2be1379d3e907dca75a124665792657c8",
+   "bytes": 1033,
+   "concept": "sailboat"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_22_car.svg",
+   "sha256": "44b8c0e62b3ee21d4f781437ed11cd6671acb7402534fd4a60d3f0eaf78d2910",
+   "bytes": 1146,
+   "concept": "car"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_23_gear.svg",
+   "sha256": "08848bfa3f2d046e9f31a93e22816597638c833c15dd7b8500a56e1a841c652c",
+   "bytes": 653,
+   "concept": "gear"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_24_trophy.svg",
+   "sha256": "1bb2598bd265047169521b5ca69e45525653924bacfde0371ffc4f58a531f225",
+   "bytes": 690,
+   "concept": "trophy"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_25_gift_box.svg",
+   "sha256": "7cb6523306c34d23755e3c37cedc23e6f427342c5cceef2be32bd7d668718bfd",
+   "bytes": 879,
+   "concept": "gift box"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_26_shopping_cart.svg",
+   "sha256": "b3bdb1f3d2d7f5cf9cc7de5cd488de75b95a4a81e9ca481c92802426004bfba6",
+   "bytes": 1257,
+   "concept": "shopping cart"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_27_envelope.svg",
+   "sha256": "300275b9adaf21f64b7104a5825df4be7926d2eb5bc21d19249a56b3e5b2f476",
+   "bytes": 544,
+   "concept": "envelope"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_28_phone.svg",
+   "sha256": "68df492c75dd5ded91ac09ba97afc2d9df25f7b889100bf390dc1c0990d524c9",
+   "bytes": 565,
+   "concept": "phone"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_29_laptop.svg",
+   "sha256": "83edf10b163bee33cc9fb8b20eada40901a1f64c714ed44065cbd04047930339",
+   "bytes": 1390,
+   "concept": "laptop"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_30_book.svg",
+   "sha256": "5f7bda3561d06d9b11c2c6764834c123e53b0fe8fbd8ac242ebd021b93abd7c1",
+   "bytes": 1172,
+   "concept": "book"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_31_pencil.svg",
+   "sha256": "10aaecf8355fd84cd6f56b049fd642ceced28d19ce23a8cf59b0f78e4143e267",
+   "bytes": 965,
+   "concept": "pencil"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_32_paint_brush.svg",
+   "sha256": "11d5fdbc2a07d122141b3fe8c7630f02ed4d807f97a3ef8528cd6fafa352c14b",
+   "bytes": 928,
+   "concept": "paint brush"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_33_music_note.svg",
+   "sha256": "1d6d44497492398904a4c9ef90797e3d9abad568479a442f1de71599091a4466",
+   "bytes": 559,
+   "concept": "music note"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_34_headphones.svg",
+   "sha256": "317f65de69dca23c40f94c2ecac01a58f1a6a07b755f62d6f72cb66c7f57ec2b",
+   "bytes": 1012,
+   "concept": "headphones"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_35_microphone.svg",
+   "sha256": "ceb61152164daf76a927d1a07d34347694efd11cf016c12e53cb842b6a6cc1ec",
+   "bytes": 1496,
+   "concept": "microphone"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_36_map_pin.svg",
+   "sha256": "3e5357d026a8bfda89278f4d86d32e240639e9af728953f9fceef9ffe7e50646",
+   "bytes": 597,
+   "concept": "map pin"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_37_compass.svg",
+   "sha256": "76aabd410a42c8105902b50fc6c90ed7c5902818dd64e9dc9d6a15ebfb47261f",
+   "bytes": 1394,
+   "concept": "compass"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_38_globe.svg",
+   "sha256": "200142441acdaa6c2ae57232a7635efd62ebca55147e27b7b6a039759ed4339c",
+   "bytes": 1128,
+   "concept": "globe"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_39_star.svg",
+   "sha256": "d3a6379b7d43341479757b0d0b3096d413579f6b2e691a5603bce3412940e5ac",
+   "bytes": 475,
+   "concept": "star"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_40_moon_and_stars.svg",
+   "sha256": "975a883a1cc84d3b91e917dcad32a02b7a669369ae2b80ea864d8d51c4ee0cad",
+   "bytes": 627,
+   "concept": "moon and stars"
+  },
+  {
+   "source": "llm-qwen3.5",
+   "license": "generated",
+   "style": "LLM-written SVG",
+   "path": "experiments/corpus/llm_svgs/qwen3_5_4b_41_snowflake.svg",
+   "sha256": "2788d5be0949edf617b09761e1cec95e13aeb6cb7a28f3ff7aff047017a01ffb",
+   "bytes": 924,
+   "concept": "snowflake"
+  }
+ ]
+}

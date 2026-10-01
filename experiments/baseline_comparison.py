@@ -57,6 +57,7 @@ def main() -> None:
         checked = verify_generation(candidate, manifest, key)
         assisted_results[name] = {
             "detected": checked["detected"],
+            "conditional_detected": checked["conditional_detected"],
             "conditional_p_value": checked["conditional_p_value"],
             "conservative_p_value": checked["conservative_p_value"],
         }

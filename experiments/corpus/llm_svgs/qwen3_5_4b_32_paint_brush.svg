@@ -1,0 +1,31 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="brush-head">
+      <path d="M 10 50 Q 5 50 5 40 L 5 10 Q 5 5 10 5 L 50 5 Q 55 5 55 10 L 55 40 Q 55 50 50 50 Z" />
+    </clipPath>
+  </defs>
+  
+  <g fill="#FF6B6B">
+    <!-- Brush Handle -->
+    <path d="M 50 5 L 15 45 L 50 45 Z" />
+    <!-- Brush Head Outline -->
+    <path d="M 10 50 Q 5 50 5 40 L 5 10 Q 5 5 10 5 L 50 5 Q 55 5 55 10 L 55 40 Q 55 50 50 50 Z" />
+  </g>
+  
+  <g fill="#4ECDC4">
+    <!-- Brush Tip -->
+    <path d="M 5 40 L 5 10 Q 5 5 10 5 L 50 5 Q 55 5 55 10 L 55 40 Q 55 50 50 50 Z" />
+  </g>
+  
+  <g fill="#FFE66D">
+    <!-- Paint Strips -->
+    <ellipse cx="32" cy="42" rx="18" ry="6" />
+    <ellipse cx="24" cy="48" rx="12" ry="8" />
+    <ellipse cx="38" cy="50" rx="14" ry="7" />
+  </g>
+  
+  <g fill="#FF9F1C" opacity="0.8">
+    <!-- Detail Highlight -->
+    <path d="M 15 40 L 25 40 L 28 44 L 18 44 Z" />
+  </g>
+</svg>

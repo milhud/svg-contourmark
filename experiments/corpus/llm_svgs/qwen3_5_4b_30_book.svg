@@ -1,0 +1,23 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bookGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4ECDC4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="none">
+    <!-- Book Cover Background -->
+    <path d="M18 28 L18 36 L48 36 L48 28 L32 42 L32 20 L18 28 Z" fill="url(#bookGrad)" stroke="#2C3E50" stroke-width="2"/>
+    <!-- Book Spine -->
+    <path d="M32 20 L32 28 L30 28 L30 20" fill="#2C3E50"/>
+    <!-- Front Cover Details (Title Area) -->
+    <path d="M24 24 L36 24 L36 30 L24 30 Z" fill="#FFFFFF" opacity="0.9"/>
+    <circle cx="30" cy="27" r="3" fill="#2C3E50"/>
+    <circle cx="30" cy="27" r="1.5" fill="#FFFFFF"/>
+    <!-- Decorative Curved Lines -->
+    <path d="M24 24 Q32 28 36 24" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round"/>
+    <path d="M36 24 Q32 28 24 24" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round"/>
+    <!-- Open Book Page Effect -->
+    <path d="M18 36 L32 42 L48 36" fill="#E0F7FA" opacity="0.8"/>
+  </g>
+</svg>

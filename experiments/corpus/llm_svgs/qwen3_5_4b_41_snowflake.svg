@@ -1,0 +1,21 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="snowflake">
+      <circle cx="32" cy="32" r="28"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#snowflake)">
+    <circle cx="32" cy="32" r="18" fill="#E3F2FD"/>
+    <g stroke="#64B5F6" stroke-width="2.5" fill="none">
+      <path d="M32 8 L32 56 M8 32 L56 32"/>
+      <path d="M32 8 L40 40 M32 56 L40 16 M8 32 L24 40 M56 32 L40 16"/>
+      <path d="M32 8 L12 40 M32 56 L12 16 M8 32 L40 40 M56 32 L24 16"/>
+    </g>
+    <g fill="#90CAF9">
+      <path d="M32 14 L38 26 L46 26 L38 38 L32 50 L26 38 L18 26 L26 26 Z" transform="translate(32 32)"/>
+      <path d="M32 8 L39 22 L46 22 L39 36 L32 50 L25 36 L18 22 L25 22 Z" transform="translate(32 32)"/>
+      <path d="M8 32 L22 40 L22 47 L15 47 L8 32 Z" transform="translate(32 32)"/>
+      <path d="M56 32 L42 40 L42 47 L49 47 L56 32 Z" transform="translate(32 32)"/>
+    </g>
+  </g>
+</svg>

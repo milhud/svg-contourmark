@@ -124,9 +124,61 @@ def main() -> None:
     key = read_key(args.key)
     session = BlindGenerationSession(key, "0 0 256 256", args.asset_id) if args.mode == "blind" else GenerationSession(key, "0 0 256 256", args.asset_id)
     selected: list[str] = []
-    records = []
+    records: list[dict] = []
     start = time.monotonic()
-    for step in range(args.steps):
+    resumed_steps = 0
+
+    if args.report.exists():
+        checkpoint = json.loads(args.report.read_text())
+        identity = (checkpoint.get("model"), checkpoint.get("motif"), checkpoint.get("mode"), checkpoint.get("asset_id"), checkpoint.get("steps_requested"))
+        requested = (args.model, args.motif, args.mode, args.asset_id, args.steps)
+        if checkpoint.get("status") == "in_progress" and identity == requested:
+            records = checkpoint.get("records", [])
+            for record in records:
+                if not record.get("accepted"):
+                    continue
+                step = len(selected)
+                if record.get("step") != step:
+                    raise SystemExit("checkpoint accepted steps are not contiguous")
+                candidates = record["candidates"]
+                start_point, target_point = endpoints_for(args.motif, step, args.steps)
+                validate_proposals(candidates, start_point, target_point)
+                if args.mode == "blind":
+                    chosen = session.add_step(candidates, {"fill": "none", "stroke": "#303030", "stroke-width": "1.5"})
+                else:
+                    chosen = session.add_step([Candidate(path) for path in candidates], {"fill": "none", "stroke": "#303030", "stroke-width": "1.5"})
+                if chosen != record["selected"]:
+                    raise SystemExit("checkpoint does not reproduce the keyed choice")
+                selected.append(candidates[chosen])
+            resumed_steps = len(selected)
+            print(f"resumed {resumed_steps}/{args.steps} accepted steps", flush=True)
+        elif checkpoint.get("status") != "completed":
+            raise SystemExit("existing report is not a compatible resumable checkpoint")
+        else:
+            raise SystemExit("output report already records a completed run")
+
+    def write_checkpoint(status: str, error: str | None = None, svg: bytes | None = None) -> None:
+        payload = {
+            "model": args.model,
+            "motif": args.motif,
+            "mode": args.mode,
+            "asset_id": args.asset_id,
+            "steps_requested": args.steps,
+            "steps_completed": len(selected),
+            "seed": args.seed,
+            "status": status,
+            "resumed_steps": resumed_steps,
+            "elapsed_seconds_this_process": time.monotonic() - start,
+            "records": records,
+        }
+        if error is not None:
+            payload["error"] = error
+        if svg is not None:
+            payload["svg_sha256"] = hashlib.sha256(svg).hexdigest()
+        args.report.write_text(json.dumps(payload, indent=2) + "\n")
+
+    write_checkpoint("in_progress")
+    for step in range(len(selected), args.steps):
         error = None
         for attempt in range(4):
             prompt = prompt_for(args.motif, step, args.steps, selected, error)
@@ -141,23 +193,15 @@ def main() -> None:
             except (ValueError, KeyError, WatermarkError) as exc:
                 error = str(exc)
                 records.append({"step": step, "attempt": attempt, "accepted": False, "error": error})
+                write_checkpoint("in_progress", error)
                 continue
             selected.append(candidates[chosen])
             records.append({"step": step, "attempt": attempt, "accepted": True, "selected": chosen, "candidates": candidates, **timing})
+            write_checkpoint("in_progress")
             print(f"step {step + 1}/{args.steps}: selected {chosen} after {attempt + 1} proposal(s)", flush=True)
             break
         else:
-            args.report.write_text(json.dumps({
-                "model": args.model,
-                "motif": args.motif,
-                "mode": args.mode,
-                "asset_id": args.asset_id,
-                "steps_requested": args.steps,
-                "steps_completed": len(selected),
-                "status": "failed",
-                "error": error,
-                "records": records,
-            }, indent=2) + "\n")
+            write_checkpoint("failed", error)
             raise SystemExit(f"step {step} failed after four model proposals: {error}")
     result = session.finish()
     if args.mode == "blind":
@@ -168,18 +212,7 @@ def main() -> None:
     args.output.write_bytes(svg)
     if manifest is not None:
         args.output.with_suffix(".wm.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    args.report.write_text(json.dumps({
-        "model": args.model,
-        "motif": args.motif,
-        "mode": args.mode,
-        "asset_id": args.asset_id,
-        "steps": args.steps,
-        "seed": args.seed,
-        "status": "completed",
-        "elapsed_seconds": time.monotonic() - start,
-        "svg_sha256": hashlib.sha256(svg).hexdigest(),
-        "records": records,
-    }, indent=2) + "\n")
+    write_checkpoint("completed", svg=svg)
 
 
 if __name__ == "__main__":

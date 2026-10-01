@@ -1,0 +1,12 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="noteClip">
+      <path d="M24 48 C 24 48, 32 48, 40 48 C 48 48, 48 32, 48 24 C 48 16, 40 8, 32 8 C 24 8, 16 16, 16 24 C 16 32, 16 48, 24 48 Z" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#noteClip)">
+    <circle cx="16" cy="24" r="4" fill="#FF6B6B" />
+    <circle cx="40" cy="24" r="4" fill="#4ECDC4" />
+    <path d="M 24 48 C 24 48, 32 48, 40 48 C 48 48, 48 32, 48 24 C 48 16, 40 8, 32 8 C 24 8, 16 16, 16 24 C 16 32, 16 48, 24 48 Z" fill="#FFE66D" />
+  </g>
+</svg>

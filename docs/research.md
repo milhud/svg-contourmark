@@ -2,6 +2,12 @@
 
 Status: prototype and research plan, 30 September 2026. This is not a claim of novelty or a completed USENIX evaluation.
 
+> **Update (end of 30 September 2026).** The project's primary method is now the
+> blind, post-hoc spectral watermark (`src/contourmark/spectral.py`). Its design,
+> results, and limits are in `HANDOFF.md`, `docs/literature.md`, and
+> `paper/contourmark.tex`. This document still describes the generation-time
+> (candidate-sampling) variant, which remains valid as the zero-distortion option.
+
 ## Question and threat model
 
 Can a generator create SVGs whose *chosen visible geometry* carries a keyed provenance signal, while preserving its normal output distribution and surviving syntax-level optimization? The generator emits a sequence of paths. At step (t), it supplies a set of geometrically distinct but visually comparable candidates (C_t=\{c_{t,1},\ldots,c_{t,m_t}\}), with categorical probabilities (q_{t,i}>0) that sum to one. The candidate set and weights must be fixed independently of the secret key. The key stays with the generator/verifier. The released artifact is an ordinary SVG; a private authenticated manifest records candidate sets and weights.

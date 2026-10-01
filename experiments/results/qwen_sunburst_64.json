@@ -1,0 +1,901 @@
+{
+  "model": "qwen3.5:4b",
+  "motif": "sunburst",
+  "mode": "assisted",
+  "asset_id": "qwen-sunburst-64-v1",
+  "steps_requested": 64,
+  "steps_completed": 64,
+  "seed": 20260930,
+  "status": "completed",
+  "resumed_steps": 0,
+  "elapsed_seconds_this_process": 304.4843780420015,
+  "records": [
+    {
+      "step": 0,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C144,128 188,136 220,128",
+        "M128,128 C146,128 184,132 220,128"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2582048663,
+      "total_duration": 3584059125
+    },
+    {
+      "step": 1,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C148,128 204,135 220,137",
+        "M128,128 C150,128 208,132 220,137"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2450712790,
+      "total_duration": 3554872042
+    },
+    {
+      "step": 2,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate shapes are too close for reliable verification"
+    },
+    {
+      "step": 2,
+      "attempt": 1,
+      "accepted": false,
+      "error": "candidate shapes are too close for reliable verification"
+    },
+    {
+      "step": 2,
+      "attempt": 2,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C146,128 198,142 218,146",
+        "M128,128 C152,128 208,150 218,146"
+      ],
+      "eval_count": 53,
+      "eval_duration": 3031969246,
+      "total_duration": 4480434625
+    },
+    {
+      "step": 3,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate shapes are too close for reliable verification"
+    },
+    {
+      "step": 3,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C144,128 196,148 216,155",
+        "M128,128 C150,128 202,158 216,155"
+      ],
+      "eval_count": 79,
+      "eval_duration": 4617869963,
+      "total_duration": 6187879083
+    },
+    {
+      "step": 4,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,128 200,145 213,163",
+        "M128,128 C150,128 205,140 213,163"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2595940916,
+      "total_duration": 4089008750
+    },
+    {
+      "step": 5,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C156,130 200,155 209,171",
+        "M128,128 C152,135 195,150 209,171"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2603853004,
+      "total_duration": 4044717500
+    },
+    {
+      "step": 6,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate shapes are too close for reliable verification"
+    },
+    {
+      "step": 6,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C148,132 208,165 204,179",
+        "M128,128 C156,140 212,172 204,179"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2435307418,
+      "total_duration": 3932499250
+    },
+    {
+      "step": 7,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate shapes are too close for reliable verification"
+    },
+    {
+      "step": 7,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C165,145 210,168 199,186",
+        "M128,128 C175,155 218,178 199,186"
+      ],
+      "eval_count": 57,
+      "eval_duration": 3065042247,
+      "total_duration": 4528755417
+    },
+    {
+      "step": 8,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C156,138 205,162 193,193",
+        "M128,128 C150,142 200,168 193,193"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2588705794,
+      "total_duration": 4067802459
+    },
+    {
+      "step": 9,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C142,136 202,169 186,199",
+        "M128,128 C158,142 208,172 186,199"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2459207295,
+      "total_duration": 3848436541
+    },
+    {
+      "step": 10,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C168,155 203,172 179,204",
+        "M128,128 C172,158 208,175 179,204"
+      ],
+      "eval_count": 57,
+      "eval_duration": 3266044083,
+      "total_duration": 4719693625
+    },
+    {
+      "step": 11,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C156,138 205,162 171,209",
+        "M128,128 C158,140 203,165 171,209"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2541062373,
+      "total_duration": 3944618458
+    },
+    {
+      "step": 12,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C145,145 210,185 163,213",
+        "M128,128 C140,140 215,190 163,213"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2453801959,
+      "total_duration": 3874205584
+    },
+    {
+      "step": 13,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C175,155 205,180 155,216",
+        "M128,128 C178,160 208,185 155,216"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2361452498,
+      "total_duration": 3713701500
+    },
+    {
+      "step": 14,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C138,145 185,175 146,218",
+        "M128,128 C150,150 195,185 146,218"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2596257001,
+      "total_duration": 3991759333
+    },
+    {
+      "step": 15,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C137,180 155,195 137,220",
+        "M128,128 C132,160 150,190 137,220"
+      ],
+      "eval_count": 39,
+      "eval_duration": 2164551337,
+      "total_duration": 3566342584
+    },
+    {
+      "step": 16,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C175,155 210,185 128,220",
+        "M128,128 C150,150 200,190 128,220"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2401108039,
+      "total_duration": 3769696500
+    },
+    {
+      "step": 17,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C152,155 185,180 119,220",
+        "M128,128 C165,170 210,195 119,220"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2442662130,
+      "total_duration": 3808177458
+    },
+    {
+      "step": 18,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C130,180 155,205 110,218",
+        "M128,128 C145,175 170,200 110,218"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2441709751,
+      "total_duration": 3881943041
+    },
+    {
+      "step": 19,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C135,145 180,185 101,216",
+        "M128,128 C140,145 190,185 101,216"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2571776586,
+      "total_duration": 3956532209
+    },
+    {
+      "step": 20,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 165,195 93,213",
+        "M128,128 C128,128 170,200 93,213"
+      ],
+      "eval_count": 39,
+      "eval_duration": 2057802916,
+      "total_duration": 3527460125
+    },
+    {
+      "step": 21,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C128,135 170,190 85,209",
+        "M128,128 C128,138 175,195 85,209"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2442739668,
+      "total_duration": 3809617500
+    },
+    {
+      "step": 22,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C142,162 165,195 77,204",
+        "M128,128 C155,175 185,208 77,204"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2455675625,
+      "total_duration": 3876089041
+    },
+    {
+      "step": 23,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,155 175,195 70,199",
+        "M128,128 C138,148 168,188 70,199"
+      ],
+      "eval_count": 57,
+      "eval_duration": 3186649623,
+      "total_duration": 4640027375
+    },
+    {
+      "step": 24,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C135,155 172,195 63,193",
+        "M128,128 C122,145 155,185 63,193"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2498826250,
+      "total_duration": 3900422083
+    },
+    {
+      "step": 25,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,165 162,192 57,186",
+        "M128,128 C138,155 158,190 57,186"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2446798252,
+      "total_duration": 3856203375
+    },
+    {
+      "step": 26,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C135,152 162,182 52,179",
+        "M128,128 C130,156 158,188 52,179"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2507817290,
+      "total_duration": 3905231875
+    },
+    {
+      "step": 27,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C128,128 142,162 47,171",
+        "M128,128 C128,128 148,168 47,171"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2448694126,
+      "total_duration": 3911813959
+    },
+    {
+      "step": 28,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C132,152 158,188 43,163",
+        "M128,128 C140,158 165,192 43,163"
+      ],
+      "eval_count": 39,
+      "eval_duration": 2150450251,
+      "total_duration": 3560331083
+    },
+    {
+      "step": 29,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C132,145 155,178 40,155",
+        "M128,128 C125,155 160,185 40,155"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2603762544,
+      "total_duration": 4043855166
+    },
+    {
+      "step": 30,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate geometries differ by more than 3% of the canvas diagonal"
+    },
+    {
+      "step": 30,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C142,162 155,175 38,146",
+        "M128,128 C140,158 150,170 38,146"
+      ],
+      "eval_count": 39,
+      "eval_duration": 2190210915,
+      "total_duration": 3701450417
+    },
+    {
+      "step": 31,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C145,165 170,195 36,137",
+        "M128,128 C140,160 165,190 36,137"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2554167501,
+      "total_duration": 4023549958
+    },
+    {
+      "step": 32,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C120,155 155,185 36,128",
+        "M128,128 C130,158 160,190 36,128"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2549767919,
+      "total_duration": 3992085917
+    },
+    {
+      "step": 33,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C142,162 165,182 36,119",
+        "M128,128 C138,156 158,175 36,119"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2577434210,
+      "total_duration": 4000735375
+    },
+    {
+      "step": 34,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C148,172 168,192 38,110",
+        "M128,128 C138,168 178,188 38,110"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2518383333,
+      "total_duration": 3987662542
+    },
+    {
+      "step": 35,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 135,155 40,101",
+        "M128,128 C128,128 145,160 40,101"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2406601541,
+      "total_duration": 3809656750
+    },
+    {
+      "step": 36,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C145,160 168,192 43,93",
+        "M128,128 C142,158 165,185 43,93"
+      ],
+      "eval_count": 38,
+      "eval_duration": 2005182498,
+      "total_duration": 3354147875
+    },
+    {
+      "step": 37,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C150,180 155,190 47,85",
+        "M128,128 C145,175 160,185 47,85"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2409387374,
+      "total_duration": 3793658834
+    },
+    {
+      "step": 38,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 145,165 52,77",
+        "M128,128 C128,128 150,170 52,77"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2558902204,
+      "total_duration": 3985930084
+    },
+    {
+      "step": 39,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C148,168 162,188 57,70",
+        "M128,128 C142,162 158,182 57,70"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2497662751,
+      "total_duration": 3986482750
+    },
+    {
+      "step": 40,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C148,182 155,190 63,63",
+        "M128,128 C142,175 150,185 63,63"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2539061250,
+      "total_duration": 4048647833
+    },
+    {
+      "step": 41,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 145,165 70,57",
+        "M128,128 C128,128 138,145 70,57"
+      ],
+      "eval_count": 57,
+      "eval_duration": 3145841499,
+      "total_duration": 4581573208
+    },
+    {
+      "step": 42,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C128,165 150,180 77,52",
+        "M128,128 C128,175 155,190 77,52"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2522618372,
+      "total_duration": 3917716375
+    },
+    {
+      "step": 43,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C145,195 160,200 85,47",
+        "M128,128 C142,185 148,190 85,47"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2495187458,
+      "total_duration": 3865815666
+    },
+    {
+      "step": 44,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate path could not be sampled: Maximum iterations reached with s(t) - s = -3.510956538832488e-07."
+    },
+    {
+      "step": 44,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 152,190 93,43",
+        "M128,128 C128,128 168,210 93,43"
+      ],
+      "eval_count": 57,
+      "eval_duration": 3063820914,
+      "total_duration": 4630814667
+    },
+    {
+      "step": 45,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C128,165 155,195 101,40",
+        "M128,128 C128,145 160,210 101,40"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2486088587,
+      "total_duration": 3899414250
+    },
+    {
+      "step": 46,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C140,185 155,200 110,38",
+        "M128,128 C135,190 160,205 110,38"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2436311962,
+      "total_duration": 3816170000
+    },
+    {
+      "step": 47,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate path could not be sampled: Maximum iterations reached with s(t) - s = -0.0001467704972419881."
+    },
+    {
+      "step": 47,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 155,205 119,36",
+        "M128,128 C128,128 165,215 119,36"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2594795625,
+      "total_duration": 4244932875
+    },
+    {
+      "step": 48,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C128,145 150,190 128,36",
+        "M128,128 C128,155 160,205 128,36"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2388192497,
+      "total_duration": 3817275042
+    },
+    {
+      "step": 49,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 137,195 137,36",
+        "M128,128 C128,128 142,210 137,36"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2480444624,
+      "total_duration": 3856795208
+    },
+    {
+      "step": 50,
+      "attempt": 0,
+      "accepted": false,
+      "error": "candidate geometries differ by more than 3% of the canvas diagonal"
+    },
+    {
+      "step": 50,
+      "attempt": 1,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C128,128 165,180 146,38",
+        "M128,128 C128,128 142,210 146,38"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2374574957,
+      "total_duration": 3850869167
+    },
+    {
+      "step": 51,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 145,165 155,40",
+        "M128,128 C128,128 158,185 155,40"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2511281043,
+      "total_duration": 3886065583
+    },
+    {
+      "step": 52,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 163,43 163,43",
+        "M128,128 C128,128 168,48 163,43"
+      ],
+      "eval_count": 43,
+      "eval_duration": 2375205416,
+      "total_duration": 3811358542
+    },
+    {
+      "step": 53,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 162,165 171,47",
+        "M128,128 C128,128 175,190 171,47"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2389078417,
+      "total_duration": 3717907416
+    },
+    {
+      "step": 54,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C128,128 179,210 179,52",
+        "M128,128 C128,128 179,195 179,52"
+      ],
+      "eval_count": 45,
+      "eval_duration": 2531269798,
+      "total_duration": 3925775708
+    },
+    {
+      "step": 55,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 186,57 186,57",
+        "M128,128 C128,128 168,57 186,57"
+      ],
+      "eval_count": 43,
+      "eval_duration": 2387972923,
+      "total_duration": 3853314667
+    },
+    {
+      "step": 56,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C128,128 165,90 193,63",
+        "M128,128 C128,128 178,110 193,63"
+      ],
+      "eval_count": 44,
+      "eval_duration": 2484963751,
+      "total_duration": 3949599667
+    },
+    {
+      "step": 57,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 168,57 199,70",
+        "M128,128 C128,128 172,60 199,70"
+      ],
+      "eval_count": 37,
+      "eval_duration": 2066640497,
+      "total_duration": 3569710916
+    },
+    {
+      "step": 58,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 175,65 204,77",
+        "M128,128 C128,128 180,70 204,77"
+      ],
+      "eval_count": 43,
+      "eval_duration": 2287370418,
+      "total_duration": 3668917333
+    },
+    {
+      "step": 59,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 155,85 209,85",
+        "M128,128 C128,128 168,78 209,85"
+      ],
+      "eval_count": 43,
+      "eval_duration": 2285820581,
+      "total_duration": 3652072875
+    },
+    {
+      "step": 60,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 175,65 213,93",
+        "M128,128 C128,128 165,70 213,93"
+      ],
+      "eval_count": 43,
+      "eval_duration": 2282003293,
+      "total_duration": 3674211417
+    },
+    {
+      "step": 61,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 175,68 216,101",
+        "M128,128 C128,128 182,75 216,101"
+      ],
+      "eval_count": 51,
+      "eval_duration": 2797201704,
+      "total_duration": 4244963375
+    },
+    {
+      "step": 62,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 0,
+      "candidates": [
+        "M128,128 C128,128 178,68 218,110",
+        "M128,128 C128,128 188,72 218,110"
+      ],
+      "eval_count": 55,
+      "eval_duration": 2917446042,
+      "total_duration": 4347771667
+    },
+    {
+      "step": 63,
+      "attempt": 0,
+      "accepted": true,
+      "selected": 1,
+      "candidates": [
+        "M128,128 C128,128 165,70 220,119",
+        "M128,128 C128,128 192,85 220,119"
+      ],
+      "eval_count": 43,
+      "eval_duration": 2258906036,
+      "total_duration": 3607720916
+    }
+  ],
+  "svg_sha256": "2b058fb51b5160e41272c9c184274e5e23f59817aa981598bc4f0d8a7ae4f7f1"
+}

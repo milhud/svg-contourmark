@@ -1,0 +1,16 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="bird-body">
+      <ellipse cx="32" cy="40" rx="20" ry="18" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#bird-body)">
+    <path d="M 12 42 Q 8 38 10 32 T 22 24 T 34 20 T 46 22 T 54 32 T 52 42 T 40 48 T 30 48 T 18 48 Z" fill="#FF6B6B" />
+  </g>
+  <path d="M 32 38 L 38 44 L 46 44 L 52 38 L 54 32 L 48 26 L 42 26 L 36 26 L 30 26 L 24 26 L 18 26 L 12 26 L 8 32 Z" fill="#4ECDC4" />
+  <circle cx="16" cy="36" r="3" fill="#FFE66D" />
+  <path d="M 24 40 L 28 44 L 32 40 L 36 44 L 40 40 Z" fill="#FF9EAA" />
+  <ellipse cx="32" cy="12" rx="14" ry="4" fill="#FF6B6B" />
+  <path d="M 16 28 L 24 34 L 28 34 L 24 40 L 32 46 L 40 40 L 36 34 L 40 34 L 44 28 Z" fill="#FFE66D" />
+  <path d="M 52 38 L 54 44 L 50 48 L 46 44 Z" fill="#FF9EAA" />
+</svg>

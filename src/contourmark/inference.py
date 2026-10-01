@@ -90,12 +90,14 @@ class Candidate:
 def _path_points(d: str, count: int = 96) -> tuple[complex, ...]:
     try:
         path = parse_path(d)
+        subpaths = path.continuous_subpaths()
+        if len(subpaths) != 1 or not len(subpaths[0]) or subpaths[0].length() <= 0:
+            raise WatermarkError("each candidate must be one nonempty contour")
+        return tuple(_sample(subpaths[0], count))
+    except WatermarkError:
+        raise
     except Exception as exc:
-        raise WatermarkError(f"invalid candidate path: {exc}") from exc
-    subpaths = path.continuous_subpaths()
-    if len(subpaths) != 1 or not len(subpaths[0]) or subpaths[0].length() <= 0:
-        raise WatermarkError("each candidate must be one nonempty contour")
-    return tuple(_sample(subpaths[0], count))
+        raise WatermarkError(f"candidate path could not be sampled: {exc}") from exc
 
 
 def _fingerprint(d: str) -> str:
@@ -337,9 +339,15 @@ def verify_generation(svg: bytes, manifest: dict[str, Any], key: bytes) -> dict[
     # Extra visible contours may be used to retain the watermark as a decoy
     # while replacing the actual drawing; reject them until render-aware
     # verification supports this case.
-    detected = len(contours) <= len(steps) and p_value <= 0.01
+    no_decoy_contours = len(contours) <= len(steps)
+    conditional_detected = no_decoy_contours and p_value <= 0.01
+    # The security decision uses the all-step statistic.  Conditioning on
+    # recognition is calibrated only when erasure is independent of the keyed
+    # winner; an adaptive eraser can otherwise preferentially retain matches.
+    detected = no_decoy_contours and conservative_p_value <= 0.01
     return {
         "detected": detected,
+        "conditional_detected": conditional_detected,
         "matched_steps": matched,
         "recognized_steps": recognized,
         "total_steps": len(steps),
@@ -347,5 +355,6 @@ def verify_generation(svg: bytes, manifest: dict[str, Any], key: bytes) -> dict[
         "conservative_p_value": conservative_p_value,
         "visible_contours": len(contours),
         "details": details,
-        "assumption": "Candidates and probabilities were fixed independently of the secret key; unmarked recognized choices follow their recorded categorical distributions; conditional detection additionally assumes erasure/recognition is independent of the secret keyed winner. The conservative p-value treats erasures as failures. Attack survival is empirical.",
+        "decision_rule": "detected uses the conservative all-step p-value at threshold 0.01; conditional_detected is diagnostic only",
+        "assumption": "Candidates and probabilities were fixed independently of the secret key; unmarked choices follow their recorded categorical distributions. The conditional diagnostic additionally assumes erasure/recognition is independent of the secret keyed winner. The security decision treats erasures as failures. Attack survival is empirical.",
     }

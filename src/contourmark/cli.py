@@ -11,7 +11,11 @@ from pathlib import Path
 from .core import Parameters, WatermarkError, embed, generate_key, read_key, verify
 from .blind import BlindGenerationSession, detect_blind
 from .capacity import assess_svg
+from .geometry import GeometryError
 from .inference import Candidate, GenerationSession, verify_generation
+from .spectral import SpectralParameters
+from .spectral import detect as spectral_detect
+from .spectral import embed as spectral_embed
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -61,6 +65,17 @@ def _parser() -> argparse.ArgumentParser:
     blind_check.add_argument("candidate", type=Path)
     blind_check.add_argument("--key", type=Path, required=True)
     blind_check.add_argument("--asset-id", required=True)
+    mark = commands.add_parser("mark", help="blind geometric watermark for any path-based SVG (recommended)")
+    mark.add_argument("input", type=Path)
+    mark.add_argument("output", type=Path)
+    mark.add_argument("--key", type=Path, required=True)
+    mark.add_argument("--report", type=Path, help="optional public embedding report (JSON)")
+    mark.add_argument("--delta", type=float, default=SpectralParameters.delta)
+    detect_cmd = commands.add_parser("detect", help="blind detection: needs only the SVG and the key")
+    detect_cmd.add_argument("svg", type=Path)
+    detect_cmd.add_argument("--key", type=Path, required=True)
+    detect_cmd.add_argument("--delta", type=float, default=SpectralParameters.delta)
+    detect_cmd.add_argument("--threshold", type=float, default=SpectralParameters.threshold)
     assess = commands.add_parser("assess", help="report fail-closed watermark coverage for an SVG")
     assess.add_argument("svg", type=Path)
     return parser
@@ -82,6 +97,21 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0 if result["whole_document_supported"] else 1
         key = read_key(args.key)
+        if args.command == "mark":
+            if args.output.exists():
+                raise WatermarkError(f"refusing to overwrite {args.output}")
+            svg, report = spectral_embed(args.input.read_bytes(), key, SpectralParameters(delta=args.delta))
+            args.output.write_bytes(svg)
+            if args.report:
+                args.report.write_text(json.dumps(report, indent=2) + "\n")
+            capacity = spectral_detect(svg, key, SpectralParameters(delta=args.delta))
+            print(json.dumps({"output": str(args.output), "marked_contours": report["marked_contours"], "log10_p_value": capacity["log10_p_value"], "detectable_at_threshold": capacity["detected"]}))
+            return 0
+        if args.command == "detect":
+            result = spectral_detect(args.svg.read_bytes(), key, SpectralParameters(delta=args.delta, threshold=args.threshold))
+            result.pop("per_contour", None)
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0 if result["detected"] else 1
         if args.command == "sample-blind":
             if args.output.exists():
                 raise WatermarkError(f"refusing to overwrite {args.output}")
@@ -146,7 +176,7 @@ def main(argv: list[str] | None = None) -> int:
         result = verify(args.original.read_bytes(), args.candidate.read_bytes(), json.loads(args.manifest.read_text()), key, args.null_trials)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result["detected"] else 1
-    except (WatermarkError, OSError, json.JSONDecodeError) as exc:
+    except (WatermarkError, GeometryError, OSError, json.JSONDecodeError) as exc:
         print(f"contourmark: {exc}", file=sys.stderr)
         return 2
 

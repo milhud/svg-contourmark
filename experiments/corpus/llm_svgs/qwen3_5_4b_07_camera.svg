@@ -1,0 +1,31 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="lensClip">
+      <ellipse cx="28" cy="32" rx="10" ry="8" />
+    </clipPath>
+  </defs>
+  
+  <g fill="none" stroke="none">
+    <!-- Camera Body -->
+    <path d="M 10 40 L 54 40 L 54 54 L 10 54 Z" fill="#4A90E2" />
+    <path d="M 14 40 L 50 40 L 50 54 L 14 54 Z" fill="#357ABD" />
+    
+    <!-- Viewfinder/Screen -->
+    <rect x="18" y="18" width="28" height="24" rx="4" ry="4" fill="#F5F7FA" />
+    <path d="M 18 18 L 18 42 M 42 18 L 42 42 M 24 18 L 24 42 M 40 18 L 40 42" stroke="#2C3E50" stroke-width="2" />
+    
+    <!-- Lens Assembly -->
+    <g clip-path="url(#lensClip)">
+      <circle cx="28" cy="32" r="8" fill="#2C3E50" />
+      <circle cx="28" cy="32" r="4" fill="#000000" />
+      <circle cx="28" cy="32" r="2" fill="#BDC3C7" />
+    </g>
+    
+    <!-- Lens Highlight -->
+    <ellipse cx="26" cy="28" rx="3" ry="1.5" fill="white" opacity="0.4" />
+    
+    <!-- Grip Handles -->
+    <path d="M 10 40 L 8 28 L 16 26 L 10 32 Z" fill="#2C3E50" />
+    <path d="M 54 40 L 52 28 L 46 26 L 54 32 Z" fill="#2C3E50" />
+  </g>
+</svg>

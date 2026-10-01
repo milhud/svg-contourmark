@@ -1,0 +1,14 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="trophy-body">
+      <path d="M8 42 L8 32 L24 32 L24 42 L32 42 L32 32 L48 32 L48 42 L56 42 L56 32 L40 32 L40 22 L24 22 L24 32 Z" />
+    </clipPath>
+  </defs>
+  <g fill="#FF5733">
+    <path d="M24 22 L24 32 L32 32 L32 22 L40 22 L40 32 L48 32 L48 22 L56 22 L56 32 L40 32 L40 22 Z M24 32 L24 42 L32 42 L32 32 Z M32 32 L32 42 L40 42 L40 32 Z M40 32 L40 22 L48 22 L48 32 Z M48 32 L48 42 L56 42 L56 32 Z" />
+  </g>
+  <g fill="#FFC300">
+    <circle cx="32" cy="18" r="14" />
+    <path d="M32 18 L28 12 L32 6 L36 12 Z M32 18 L32 26 L36 26 L32 22 Z M32 26 L28 26 L32 32 Z M32 26 L36 26 L32 32 Z" />
+  </g>
+</svg>

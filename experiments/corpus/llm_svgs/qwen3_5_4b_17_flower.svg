@@ -1,0 +1,20 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="petal-clip">
+      <path d="M32 20 C10 20 5 40 15 55 C25 70 40 70 50 55 C60 40 55 20 32 20 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#petal-clip)">
+    <path d="M32 20 C10 20 5 40 15 55 C25 70 40 70 50 55 C60 40 55 20 32 20 Z" fill="#FF6B6B"/>
+    <path d="M32 20 C10 20 5 40 15 55 C25 70 40 70 50 55 C60 40 55 20 32 20 Z" fill="#FF9E9E" fill-opacity="0.8"/>
+  </g>
+  <g>
+    <path d="M32 20 Q20 35 25 45 Q35 55 50 45 Q55 35 45 20 Q35 5 32 20 Z" fill="#FDBA74"/>
+    <path d="M32 20 Q10 35 15 45 Q25 55 40 45 Q45 35 35 20 Q25 5 32 20 Z" fill="#FFD933"/>
+    <path d="M32 20 Q10 35 15 45 Q25 55 40 45 Q45 35 35 20 Q25 5 32 20 Z" fill="#FF9E33"/>
+  </g>
+  <path d="M32 25 Q30 35 32 45 Q35 35 32 25 Z" fill="#FF6B35"/>
+  <circle cx="32" cy="40" r="4" fill="#FFFFFF"/>
+  <circle cx="32" cy="42" r="3" fill="#FFFFFF"/>
+  <circle cx="32" cy="38" r="2.5" fill="#FFFFFF"/>
+</svg>

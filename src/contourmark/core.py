@@ -94,13 +94,42 @@ def _sample(path: SVGPath, count: int) -> list[complex]:
     closed = path.isclosed()
     divisor = count if closed else count - 1
     points: list[complex] = []
+    def fallback_point(target: float) -> complex:
+        """Invert arc length by monotone bisection when svgpathtools stalls."""
+        remaining = target
+        for segment in path:
+            segment_length = segment.length(error=1e-8)
+            if remaining > segment_length and segment is not path[-1]:
+                remaining -= segment_length
+                continue
+            if remaining <= 0:
+                return segment.start
+            if remaining >= segment_length:
+                return segment.end
+            lower, upper = 0.0, 1.0
+            for _ in range(60):
+                middle = (lower + upper) / 2
+                if segment.length(0, middle, error=1e-9) < remaining:
+                    lower = middle
+                else:
+                    upper = middle
+            return segment.point((lower + upper) / 2)
+        return path.end
+
     for i in range(count):
         if not closed and i == 0:
             points.append(path.start)
         elif not closed and i == count - 1:
             points.append(path.end)
         else:
-            points.append(path.point(path.ilength(length * i / divisor, error=1e-5)))
+            target = length * i / divisor
+            try:
+                points.append(path.point(path.ilength(target, error=1e-5)))
+            except Exception:
+                try:
+                    points.append(fallback_point(target))
+                except Exception as exc:
+                    raise WatermarkError(f"path arc length could not be inverted: {exc}") from exc
     return points
 
 

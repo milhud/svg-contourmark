@@ -1,0 +1,12 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="envelopeClip">
+      <path d="M16 44 L48 44 L48 10 L32 5 L16 10 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#envelopeClip)">
+    <rect x="16" y="44" width="32" height="10" rx="2" fill="#FF6B6B"/>
+    <path d="M16 10 L32 5 L48 10 L48 44 L16 44 Z" fill="#4ECDC4"/>
+  </g>
+  <path d="M18 12 C18 12 22 18 22 22 C22 26 28 26 28 22 C28 18 32 12 32 12 C32 12 36 18 36 22 C36 26 42 26 42 22 C42 18 46 12 46 12 L46 10 L32 15 L18 10 Z" fill="#FFE66D"/>
+</svg>

@@ -1,0 +1,16 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="anchorClip">
+      <path d="M 16 48 C 16 48 8 32 10 20 C 12 8 20 2 28 4 C 36 6 42 14 42 22 C 42 30 38 38 34 44 C 30 50 26 52 20 52 C 14 52 10 50 8 46 C 6 42 8 36 16 48 Z" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#anchorClip)">
+    <rect x="24" y="32" width="16" height="16" rx="4" fill="#FF6B6B" />
+    <circle cx="24" cy="36" r="4" fill="#FF6B6B" />
+    <circle cx="36" cy="36" r="4" fill="#FF6B6B" />
+    <path d="M 24 32 L 36 32 M 24 36 L 36 36" stroke="#FF6B6B" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <path d="M 16 48 C 16 48 8 32 10 20 C 12 8 20 2 28 4 C 36 6 42 14 42 22 C 42 30 38 38 34 44 C 30 50 26 52 20 52 C 14 52 10 50 8 46 C 6 42 8 36 16 48 Z" fill="#4ECDC4" />
+  <path d="M 22 14 Q 26 10 30 14 Q 34 18 30 22 Q 26 26 22 22 Q 18 18 22 14 Z" fill="#FFE66D" />
+  <path d="M 18 26 Q 22 30 26 28 Q 30 26 28 22 Q 26 18 22 20 Q 18 22 18 26 Z" fill="#FF9F43" />
+</svg>

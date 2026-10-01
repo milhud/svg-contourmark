@@ -1,0 +1,784 @@
+{
+  "seed": 20260930,
+  "binary_trials_per_cell": 100000,
+  "weighted_trials_per_cell": 20000,
+  "alphas": [
+    0.01,
+    0.001
+  ],
+  "binary_null": {
+    "none": [
+      {
+        "steps": 16,
+        "keep_match": 1.0,
+        "keep_mismatch": 1.0,
+        "mean_recognized": 16.0,
+        "conditional": {
+          "0.01": {
+            "detections": 218,
+            "trials": 100000,
+            "rate": 0.00218,
+            "wilson_95": [
+              0.0019094269181940326,
+              0.0024888187132181454
+            ]
+          },
+          "0.001": {
+            "detections": 28,
+            "trials": 100000,
+            "rate": 0.00028,
+            "wilson_95": [
+              0.00019373899099317705,
+              0.00040465261024681605
+            ]
+          }
+        },
+        "conservative": {
+          "0.01": {
+            "detections": 218,
+            "trials": 100000,
+            "rate": 0.00218,
+            "wilson_95": [
+              0.0019094269181940326,
+              0.0024888187132181454
+            ]
+          },
+          "0.001": {
+            "detections": 28,
+            "trials": 100000,
+            "rate": 0.00028,
+            "wilson_95": [
+              0.00019373899099317705,
+              0.00040465261024681605
+            ]
+          }
+        }
+      },
+      {
+        "steps": 32,
+        "keep_match": 1.0,
+        "keep_mismatch": 1.0,
+        "mean_recognized": 32.0,
+        "conditional": {
+          "0.01": {
+            "detections": 345,
+            "trials": 100000,
+            "rate": 0.00345,
+            "wilson_95": [
+              0.00310516216672387,
+              0.003832985895382347
+            ]
+          },
+          "0.001": {
+            "detections": 24,
+            "trials": 100000,
+            "rate": 0.00024,
+            "wilson_95": [
+              0.00016129191248332846,
+              0.0003571027618056714
+            ]
+          }
+        },
+        "conservative": {
+          "0.01": {
+            "detections": 345,
+            "trials": 100000,
+            "rate": 0.00345,
+            "wilson_95": [
+              0.00310516216672387,
+              0.003832985895382347
+            ]
+          },
+          "0.001": {
+            "detections": 24,
+            "trials": 100000,
+            "rate": 0.00024,
+            "wilson_95": [
+              0.00016129191248332846,
+              0.0003571027618056714
+            ]
+          }
+        }
+      },
+      {
+        "steps": 64,
+        "keep_match": 1.0,
+        "keep_mismatch": 1.0,
+        "mean_recognized": 64.0,
+        "conditional": {
+          "0.01": {
+            "detections": 828,
+            "trials": 100000,
+            "rate": 0.00828,
+            "wilson_95": [
+              0.007736942051722759,
+              0.008860834939715907
+            ]
+          },
+          "0.001": {
+            "detections": 80,
+            "trials": 100000,
+            "rate": 0.0008,
+            "wilson_95": [
+              0.0006428987201707271,
+              0.0009954529314321798
+            ]
+          }
+        },
+        "conservative": {
+          "0.01": {
+            "detections": 828,
+            "trials": 100000,
+            "rate": 0.00828,
+            "wilson_95": [
+              0.007736942051722759,
+              0.008860834939715907
+            ]
+          },
+          "0.001": {
+            "detections": 80,
+            "trials": 100000,
+            "rate": 0.0008,
+            "wilson_95": [
+              0.0006428987201707271,
+              0.0009954529314321798
+            ]
+          }
+        }
+      }
+    ],
+    "independent_75_percent": [
+      {
+        "steps": 16,
+        "keep_match": 0.75,
+        "keep_mismatch": 0.75,
+        "mean_recognized": 11.99255,
+        "conditional": {
+          "0.01": {
+            "detections": 339,
+            "trials": 100000,
+            "rate": 0.00339,
+            "wilson_95": [
+              0.003048323080948845,
+              0.0037698295907308815
+            ]
+          },
+          "0.001": {
+            "detections": 38,
+            "trials": 100000,
+            "rate": 0.00038,
+            "wilson_95": [
+              0.00027688183204935583,
+              0.0005215020865681208
+            ]
+          }
+        },
+        "conservative": {
+          "0.01": {
+            "detections": 4,
+            "trials": 100000,
+            "rate": 4e-05,
+            "wilson_95": [
+              1.5555325305394583e-05,
+              0.0001028547142286384
+            ]
+          },
+          "0.001": {
+            "detections": 1,
+            "trials": 100000,
+            "rate": 1e-05,
+            "wilson_95": [
+              1.7652477303783126e-06,
+              5.664709659040966e-05
+            ]
+          }
+        }
+      },
+      {
+        "steps": 32,
+        "keep_match": 0.75,
+        "keep_mismatch": 0.75,
+        "mean_recognized": 23.99672,
+        "conditional": {
+          "0.01": {
+            "detections": 627,
+            "trials": 100000,
+            "rate": 0.00627,
+            "wilson_95": [
+              0.005799374261043199,
+              0.0067785571511080524
+            ]
+          },
+          "0.001": {
+            "detections": 49,
+            "trials": 100000,
+            "rate": 0.00049,
+            "wilson_95": [
+              0.0003706909060749414,
+              0.0006476845616577671
+            ]
+          }
+        },
+        "conservative": {
+          "0.01": {
+            "detections": 0,
+            "trials": 100000,
+            "rate": 0.0,
+            "wilson_95": [
+              0.0,
+              3.841311258303963e-05
+            ]
+          },
+          "0.001": {
+            "detections": 0,
+            "trials": 100000,
+            "rate": 0.0,
+            "wilson_95": [
+              0.0,
+              3.841311258303963e-05
+            ]
+          }
+        }
+      },
+      {
+        "steps": 64,
+        "keep_match": 0.75,
+        "keep_mismatch": 0.75,
+        "mean_recognized": 48.00414,
+        "conditional": {
+          "0.01": {
+            "detections": 657,
+            "trials": 100000,
+            "rate": 0.00657,
+            "wilson_95": [
+              0.006087880023430885,
+              0.0070900283408528155
+            ]
+          },
+          "0.001": {
+            "detections": 54,
+            "trials": 100000,
+            "rate": 0.00054,
+            "wilson_95": [
+              0.0004139275089394407,
+              0.0007044441174820094
+            ]
+          }
+        },
+        "conservative": {
+          "0.01": {
+            "detections": 1,
+            "trials": 100000,
+            "rate": 1e-05,
+            "wilson_95": [
+              1.7652477303783126e-06,
+              5.664709659040966e-05
+            ]
+          },
+          "0.001": {
+            "detections": 0,
+            "trials": 100000,
+            "rate": 0.0,
+            "wilson_95": [
+              0.0,
+              3.841311258303963e-05
+            ]
+          }
+        }
+      }
+    ],
+    "outcome_biased": [
+      {
+        "steps": 16,
+        "keep_match": 0.95,
+        "keep_mismatch": 0.25,
+        "mean_recognized": 9.59557,
+        "conditional": {
+          "0.01": {
+            "detections": 17061,
+            "trials": 100000,
+            "rate": 0.17061,
+            "wilson_95": [
+              0.1682911938869725,
+              0.17295411190333498
+            ]
+          },
+          "0.001": {
+            "detections": 4310,
+            "trials": 100000,
+            "rate": 0.0431,
+            "wilson_95": [
+              0.0418587592264486,
+              0.04437634267582979
+            ]
+          }
+        },
+        "conservative": {
+          "0.01": {
+            "detections": 119,
+            "trials": 100000,
+            "rate": 0.00119,
+            "wilson_95": [
+              0.0009946279914127421,
+              0.0014236936979623502
+            ]
+          },
+          "0.001": {
+            "detections": 15,
+            "trials": 100000,
+            "rate": 0.00015,
+            "wilson_95": [
+              9.09079268645651e-05,
+              0.00024749366178469963
+            ]
+          }
+        }
+      },
+      {
+        "steps": 32,
+        "keep_match": 0.95,
+        "keep_mismatch": 0.25,
+        "mean_recognized": 19.19726,
+        "conditional": {
+          "0.01": {
+            "detections": 54466,
+            "trials": 100000,
+            "rate": 0.54466,
+            "wilson_95": [
+              0.5415717547788922,
+              0.547744814161892
+            ]
+          },
+          "0.001": {
+            "detections": 22359,
+            "trials": 100000,
+            "rate": 0.22359,
+            "wilson_95": [
+              0.22101826738444674,
+              0.22618296815245142
+            ]
+          }
+        },
+        "conservative": {
+          "0.01": {
+            "detections": 126,
+            "trials": 100000,
+            "rate": 0.00126,
+            "wilson_95": [
+              0.0010584625007839183,
+              0.0014998538107554122
+            ]
+          },
+          "0.001": {
+            "detections": 8,
+            "trials": 100000,
+            "rate": 8e-05,
+            "wilson_95": [
+              4.053852835999305e-05,
+              0.00015786843812503332
+            ]
+          }
+        }
+      },
+      {
+        "steps": 64,
+        "keep_match": 0.95,
+        "keep_mismatch": 0.25,
+        "mean_recognized": 38.39404,
+        "conditional": {
+          "0.01": {
+            "detections": 90562,
+            "trials": 100000,
+            "rate": 0.90562,
+            "wilson_95": [
+              0.9037923746423853,
+              0.9074164631041628
+            ]
+          },
+          "0.001": {
+            "detections": 70148,
+            "trials": 100000,
+            "rate": 0.70148,
+            "wilson_95": [
+              0.6986360678599901,
+              0.7043084531921635
+            ]
+          }
+        },
+        "conservative": {
+          "0.01": {
+            "detections": 247,
+            "trials": 100000,
+            "rate": 0.00247,
+            "wilson_95": [
+              0.00218087266202397,
+              0.00279735068978291
+            ]
+          },
+          "0.001": {
+            "detections": 13,
+            "trials": 100000,
+            "rate": 0.00013,
+            "wilson_95": [
+              7.597755381946865e-05,
+              0.00022242557135429937
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "weighted_null": [
+    {
+      "steps": 16,
+      "candidate_probabilities": [
+        0.1,
+        0.3,
+        0.6
+      ],
+      "conditional": {
+        "0.01": {
+          "detections": 105,
+          "trials": 20000,
+          "rate": 0.00525,
+          "wilson_95": [
+            0.004339065918743494,
+            0.006350953758772034
+          ]
+        },
+        "0.001": {
+          "detections": 4,
+          "trials": 20000,
+          "rate": 0.0002,
+          "wilson_95": [
+            7.777875605022842e-05,
+            0.0005141804856319553
+          ]
+        }
+      }
+    },
+    {
+      "steps": 32,
+      "candidate_probabilities": [
+        0.1,
+        0.3,
+        0.6
+      ],
+      "conditional": {
+        "0.01": {
+          "detections": 126,
+          "trials": 20000,
+          "rate": 0.0063,
+          "wilson_95": [
+            0.005294265681343145,
+            0.007495350720454561
+          ]
+        },
+        "0.001": {
+          "detections": 8,
+          "trials": 20000,
+          "rate": 0.0004,
+          "wilson_95": [
+            0.00020270340374573274,
+            0.0007891790235140093
+          ]
+        }
+      }
+    }
+  ],
+  "binary_power": [
+    {
+      "steps": 16,
+      "match_probability": 1.0,
+      "power": {
+        "0.01": {
+          "detections": 100000,
+          "trials": 100000,
+          "rate": 1.0,
+          "wilson_95": [
+            0.999961586887417,
+            1.0
+          ]
+        },
+        "0.001": {
+          "detections": 100000,
+          "trials": 100000,
+          "rate": 1.0,
+          "wilson_95": [
+            0.999961586887417,
+            1.0
+          ]
+        }
+      }
+    },
+    {
+      "steps": 16,
+      "match_probability": 0.9,
+      "power": {
+        "0.01": {
+          "detections": 78871,
+          "trials": 100000,
+          "rate": 0.78871,
+          "wilson_95": [
+            0.7861687842318899,
+            0.7912290352686426
+          ]
+        },
+        "0.001": {
+          "detections": 51140,
+          "trials": 100000,
+          "rate": 0.5114,
+          "wilson_95": [
+            0.5083014519941169,
+            0.5144976721869161
+          ]
+        }
+      }
+    },
+    {
+      "steps": 16,
+      "match_probability": 0.75,
+      "power": {
+        "0.01": {
+          "detections": 19652,
+          "trials": 100000,
+          "rate": 0.19652,
+          "wilson_95": [
+            0.19406882141385762,
+            0.19899449380895579
+          ]
+        },
+        "0.001": {
+          "detections": 6333,
+          "trials": 100000,
+          "rate": 0.06333,
+          "wilson_95": [
+            0.06183716438854414,
+            0.06485638331919913
+          ]
+        }
+      }
+    },
+    {
+      "steps": 16,
+      "match_probability": 0.6,
+      "power": {
+        "0.01": {
+          "detections": 1743,
+          "trials": 100000,
+          "rate": 0.01743,
+          "wilson_95": [
+            0.01663723307673242,
+            0.018259840954745983
+          ]
+        },
+        "0.001": {
+          "detections": 312,
+          "trials": 100000,
+          "rate": 0.00312,
+          "wilson_95": [
+            0.0027929085956305793,
+            0.0034852648191299423
+          ]
+        }
+      }
+    },
+    {
+      "steps": 32,
+      "match_probability": 1.0,
+      "power": {
+        "0.01": {
+          "detections": 100000,
+          "trials": 100000,
+          "rate": 1.0,
+          "wilson_95": [
+            0.999961586887417,
+            1.0
+          ]
+        },
+        "0.001": {
+          "detections": 100000,
+          "trials": 100000,
+          "rate": 1.0,
+          "wilson_95": [
+            0.999961586887417,
+            1.0
+          ]
+        }
+      }
+    },
+    {
+      "steps": 32,
+      "match_probability": 0.9,
+      "power": {
+        "0.01": {
+          "detections": 99670,
+          "trials": 100000,
+          "rate": 0.9967,
+          "wilson_95": [
+            0.9963249581426675,
+            0.9970368822712926
+          ]
+        },
+        "0.001": {
+          "detections": 96362,
+          "trials": 100000,
+          "rate": 0.96362,
+          "wilson_95": [
+            0.9624416107665078,
+            0.9647627710589809
+          ]
+        }
+      }
+    },
+    {
+      "steps": 32,
+      "match_probability": 0.75,
+      "power": {
+        "0.01": {
+          "detections": 59285,
+          "trials": 100000,
+          "rate": 0.59285,
+          "wilson_95": [
+            0.5898014166401416,
+            0.5958914500448517
+          ]
+        },
+        "0.001": {
+          "detections": 27740,
+          "trials": 100000,
+          "rate": 0.2774,
+          "wilson_95": [
+            0.2746336719617274,
+            0.2801834295559946
+          ]
+        }
+      }
+    },
+    {
+      "steps": 32,
+      "match_probability": 0.6,
+      "power": {
+        "0.01": {
+          "detections": 5747,
+          "trials": 100000,
+          "rate": 0.05747,
+          "wilson_95": [
+            0.05604442497678251,
+            0.05892957293264024
+          ]
+        },
+        "0.001": {
+          "detections": 926,
+          "trials": 100000,
+          "rate": 0.00926,
+          "wilson_95": [
+            0.00868490898091462,
+            0.009872792720823384
+          ]
+        }
+      }
+    },
+    {
+      "steps": 64,
+      "match_probability": 1.0,
+      "power": {
+        "0.01": {
+          "detections": 100000,
+          "trials": 100000,
+          "rate": 1.0,
+          "wilson_95": [
+            0.999961586887417,
+            1.0
+          ]
+        },
+        "0.001": {
+          "detections": 100000,
+          "trials": 100000,
+          "rate": 1.0,
+          "wilson_95": [
+            0.999961586887417,
+            1.0
+          ]
+        }
+      }
+    },
+    {
+      "steps": 64,
+      "match_probability": 0.9,
+      "power": {
+        "0.01": {
+          "detections": 100000,
+          "trials": 100000,
+          "rate": 1.0,
+          "wilson_95": [
+            0.999961586887417,
+            1.0
+          ]
+        },
+        "0.001": {
+          "detections": 100000,
+          "trials": 100000,
+          "rate": 1.0,
+          "wilson_95": [
+            0.999961586887417,
+            1.0
+          ]
+        }
+      }
+    },
+    {
+      "steps": 64,
+      "match_probability": 0.75,
+      "power": {
+        "0.01": {
+          "detections": 96611,
+          "trials": 100000,
+          "rate": 0.96611,
+          "wilson_95": [
+            0.9649704793440285,
+            0.9672137111841596
+          ]
+        },
+        "0.001": {
+          "detections": 84427,
+          "trials": 100000,
+          "rate": 0.84427,
+          "wilson_95": [
+            0.8420094080529057,
+            0.8465041429825564
+          ]
+        }
+      }
+    },
+    {
+      "steps": 64,
+      "match_probability": 0.6,
+      "power": {
+        "0.01": {
+          "detections": 21675,
+          "trials": 100000,
+          "rate": 0.21675,
+          "wilson_95": [
+            0.21420715952283356,
+            0.2193146015054447
+          ]
+        },
+        "0.001": {
+          "detections": 5717,
+          "trials": 100000,
+          "rate": 0.05717,
+          "wilson_95": [
+            0.055747977037854765,
+            0.05862604391943553
+          ]
+        }
+      }
+    }
+  ],
+  "interpretation": {
+    "independent_erasure": "Conditional p-values should remain super-uniform when recognition is independent of match status.",
+    "outcome_biased_erasure": "Conditional p-values are not valid when recognition preferentially retains matches; this is an intentional counterexample.",
+    "conservative": "Counting every unrecognized step as a failure avoids that selection effect at the cost of power."
+  }
+}
