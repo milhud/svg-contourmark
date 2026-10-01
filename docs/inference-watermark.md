@@ -488,8 +488,33 @@ Reading:
   check, is on target. At 1e-5 it shows 2 hits in 36,000 where 0.36 are
   expected (probability about 5%); run 2 adds more trials.
 
-Run 2 (`colab/run2.sh`) adds top-p 0.7, 0.8 and 1.0, naive reuse and the bias
-sampler on the real model, a second key, and more seeds.
+### IconShop replication with the bin offset
+
+Source: `experiments/results/geosample/colab_run1_repeat/`. Same prompts,
+seeds and sampler as run 1, on commit `fe83419` with `bin_offset = 0.37`. The
+plain samples are identical to run 1 (same seeds), so this isolates the
+change in the marked samples.
+
+| | top-p 0.5: run 1 → repeat | top-p 0.9: run 1 → repeat |
+|---|---|---|
+| Detected at 1e-6 | 11% → 7% | 62% → 66% |
+| Detected at 1e-3 | 47% → 38% | 91% → 85% |
+| After rotate 30°, scale ×0.37, group transform (of clean) | 77–85% → 100% | 99–100% → 100% |
+| After SVGO, Scour, any rounding | unchanged → unchanged | unchanged → unchanged |
+| After composition (of clean) | 31% → 50% | 65% → 71% |
+| CLIP top-1, marked / plain | 44/45% → 45/45% | 40/40% → 39/40% |
+| Key-randomized null at 1e-3 (36,000 tests) | 0.00078 → 0.00089 | 0.0010 → 0.0013 |
+
+* The detection rates replicate within sampling noise (120 icons per cell;
+  the 95% interval on 62% is about ±9 points). Pooled over both runs:
+  about 9% at top-p 0.5 and 64% at top-p 0.9, at p ≤ 1e-6.
+* The bin offset removed every loss under rotation and scaling.
+* The null at top-p 0.9 shows 46 hits at 1e-3 where 36 are expected
+  (probability about 6% under exact calibration). Together with run 1 this
+  is not significant, but it is the direction to watch; run 2 adds trials.
+
+The variant experiment (`colab/run2.sh`: top-p 0.7, 0.8, 1.0; naive reuse and
+the bias sampler; a second key; 8 seeds) has not been run yet.
 
 ### Null on human icons
 

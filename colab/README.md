@@ -140,11 +140,17 @@ To return them to the project, copy the `OUT` directory into `experiments/result
 
 ## Run 2 (after run 1 has succeeded)
 
-Run 2 answers the questions run 1 raised. It needs the same setup (sections 0–4) on the **current** `main`; pull first if the clone is old (`git pull`).
+Run 2 answers the questions run 1 raised. It needs the setup from sections 0–4 done in this session (clone, pip install, model download).
 
-```bash
-OUT=/content/drive/MyDrive/contourmark_runs/run2 SEEDS=8 BATCH=16 bash colab/run2.sh
+**Paste this as one new Colab cell and run it.** Do not use the "Full run" cell from section 6: that repeats run 1. An already-open notebook does not update itself when the repository changes, so paste the cell below even if the notebook has no "section 9".
+
 ```
+%cd /content/svg-contourmark
+!git pull -q && git rev-parse HEAD
+!OUT=/content/drive/MyDrive/contourmark_runs/run2_variants SEEDS=8 BATCH=16 bash colab/run2.sh
+```
+
+Without Drive, use `OUT=/content/runs/run2_variants`. The script installs SVGO itself if it is missing and stops with a clear message if that fails. A correct start prints `svgo: ok` and then `mask_p05: ... samples`. When it ends, `OUT` contains twelve configuration folders (`mask_p05` … `mask_p09_key2`) and `RUN_SUMMARY.md`; if you only see `iconshop_p05` and `iconshop_p09`, the wrong cell was run.
 
 What it generates (30 prompts × `SEEDS` each):
 

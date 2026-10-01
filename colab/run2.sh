@@ -21,11 +21,17 @@ mkdir -p "$OUT"
 cd "$REPO/experiments"
 git -C "$REPO" rev-parse HEAD > "$OUT/commit.txt"
 $PY -c "import torch, transformers, numpy, scipy; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none'); print('transformers', transformers.__version__, 'numpy', numpy.__version__, 'scipy', scipy.__version__)" | tee "$OUT/environment.txt"
-# SVGO must work before any evaluation: run 1 silently lost its SVGO rows.
-if (cd "$REPO" && node --input-type=module -e "import('svgo').then(() => console.log('svgo ok'))" 2>/dev/null | grep -q "svgo ok"); then
+# SVGO must work before evaluation: earlier Colab runs silently lost every SVGO row.
+svgo_ok() { (cd "$REPO" && node --input-type=module -e "import('svgo').then(() => console.log('svgo ok'))" 2>/dev/null | grep -q "svgo ok"); }
+if ! svgo_ok; then
+  echo "svgo missing: installing"
+  (cd "$REPO" && (npm install --silent --no-audit --no-fund || npm install --silent --no-audit --no-fund --no-save svgo)) || true
+fi
+if svgo_ok; then
   echo "svgo: ok" | tee -a "$OUT/environment.txt"
 else
-  echo "svgo: MISSING. Run 'npm install' in the repo root, then re-run. (Set ALLOW_NO_SVGO=1 to continue without it.)" | tee -a "$OUT/environment.txt"
+  echo "svgo: MISSING after install attempt (node: $(command -v node || echo none), $(node --version 2>/dev/null || true))" | tee -a "$OUT/environment.txt"
+  echo "Fix: cd $REPO && npm install ; or set ALLOW_NO_SVGO=1 to continue without SVGO attacks."
   [ "${ALLOW_NO_SVGO:-0}" = "1" ] || exit 1
 fi
 
@@ -59,7 +65,11 @@ if [ "$STAGE" = "evaluate" ] || [ "$STAGE" = "all" ]; then
     $PY geosample_null.py --samples-dir "$RUN" --keys 300 --workers "$WORKERS" --output "$OUT/${NAME}_null.json" > /dev/null
     echo "---- $NAME ----"; sed -n '1,12p' "$OUT/${NAME}_attacks.summary.md"
   done
-  $PY clip_quality.py --samples-dir "${DIRS[@]}" --output "$OUT/clip_quality.json"
-  $PY summarize_run.py "$OUT" --markdown "$OUT/RUN_SUMMARY.md" --json "$OUT/run_summary.json"
+  if [ "${#DIRS[@]}" -gt 0 ]; then
+    $PY clip_quality.py --samples-dir "${DIRS[@]}" --output "$OUT/clip_quality.json"
+    $PY summarize_run.py "$OUT" --markdown "$OUT/RUN_SUMMARY.md" --json "$OUT/run_summary.json"
+  else
+    echo "no generated samples found in $OUT; nothing to evaluate"
+  fi
 fi
 echo "DONE. Results in $OUT"

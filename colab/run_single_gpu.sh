@@ -29,6 +29,20 @@ cd "$REPO/experiments"
 git -C "$REPO" rev-parse HEAD > "$OUT/commit.txt"
 $PY -c "import torch, transformers, numpy, scipy; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none'); print('transformers', transformers.__version__, 'numpy', numpy.__version__, 'scipy', scipy.__version__)" | tee "$OUT/environment.txt"
 
+# SVGO must work before evaluation: earlier Colab runs silently lost every SVGO row.
+svgo_ok() { (cd "$REPO" && node --input-type=module -e "import('svgo').then(() => console.log('svgo ok'))" 2>/dev/null | grep -q "svgo ok"); }
+if ! svgo_ok; then
+  echo "svgo missing: installing"
+  (cd "$REPO" && (npm install --silent --no-audit --no-fund || npm install --silent --no-audit --no-fund --no-save svgo)) || true
+fi
+if svgo_ok; then
+  echo "svgo: ok" | tee -a "$OUT/environment.txt"
+else
+  echo "svgo: MISSING after install attempt (node: $(command -v node || echo none), $(node --version 2>/dev/null || true))" | tee -a "$OUT/environment.txt"
+  echo "Fix: cd $REPO && npm install ; or set ALLOW_NO_SVGO=1 to continue without SVGO attacks."
+  [ "${ALLOW_NO_SVGO:-0}" = "1" ] || exit 1
+fi
+
 if [ "$STAGE" = "generate" ] || [ "$STAGE" = "all" ]; then
   for TOP_P in $TOP_PS; do
     RUN="$OUT/iconshop_p${TOP_P/./}"

@@ -568,3 +568,21 @@ sampler. Full table: `RUN_SUMMARY.md` there and
   what it costs in CLIP accuracy.
 * Whether the bin offset removes the rotation/scale losses.
 * How much results move with the key.
+
+### Replication (`experiments/results/geosample/colab_run1_repeat/`)
+
+The second Colab session re-ran the run-1 cell on commit `fe83419` instead of
+`colab/run2.sh` (the open notebook predated the new section). It is a clean
+replication with the bin offset:
+
+* Detection at 1e-6: 7% at top-p 0.5 and 66% at 0.9 (run 1: 11% and 62%).
+  Pooled: about 9% and 64%.
+* Rotation, scaling and group transforms now keep 100% of clean detections
+  (run 1: 77–85% at top-p 0.5). The bin offset works.
+* SVGO, Scour, rounding: unchanged, as before. CLIP: marked equals plain.
+* SVGO was missing in Colab again; tables were recomputed locally. Both run
+  scripts now install SVGO themselves and report it in `environment.txt`.
+
+**The variant experiment (`colab/run2.sh`) is still to be run.** The Colab
+README now gives a single cell to paste; its output folder is
+`run2_variants` and must contain twelve configuration folders.
