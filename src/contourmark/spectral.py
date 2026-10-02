@@ -20,6 +20,11 @@ of the key, each lattice offset is uniform, so each group score is
 ``|A| cos(U)`` with ``U`` uniform.  The detector reports a Chernoff upper bound
 on the tail of that exact null distribution, conditional on the observed
 document.  No threshold is fitted to a corpus.
+
+Optionally (``SpectralParameters.spread = P > 0``) the quantizer acts on P
+keyed orthonormal projections of each contour's selected magnitudes instead
+of on the magnitudes themselves (spread-transform dither modulation); see
+``_score_spread_transform`` for the scheme and its null argument.
 """
 
 from __future__ import annotations
@@ -77,6 +82,7 @@ class SpectralParameters:
     rounding_fraction: float = 0.05  # serialization step as a fraction of delta * contour radius
     realize_gain: float = 0.25  # handle-model gain needed before a coefficient is embedded
     threshold: float = 1e-6  # detection p-value threshold
+    spread: int = 0  # 0: plain QIM; P > 0: spread-transform dither modulation on P keyed projections per contour
 
     def validate(self) -> None:
         if not 64 <= self.samples <= 4096:
@@ -87,6 +93,12 @@ class SpectralParameters:
             raise GeometryError("delta must be in (0, 0.1]")
         if not 0 < self.threshold < 1:
             raise GeometryError("threshold must be in (0, 1)")
+        if not 0 <= self.spread <= self.k_count:
+            raise GeometryError("spread must be in [0, k_count]")
+
+    @property
+    def spread_active(self) -> bool:
+        return self.spread > 0 and self.scheme == "qim"
 
     @property
     def band(self) -> np.ndarray:
@@ -148,6 +160,39 @@ def dithers(key: bytes, seed: str, count: int) -> np.ndarray:
         block += 1
     integers = np.frombuffer(digest[: 8 * count], dtype=">u8") >> np.uint64(11)
     return (integers.astype(np.float64) + 0.5) / float(1 << 53)
+
+
+def spread_matrix(key: bytes, seed: str, selected: np.ndarray, spread: int) -> np.ndarray:
+    """Keyed orthonormal projection rows for spread-transform dither modulation.
+
+    A ``spread x K`` Gaussian matrix over the *full* band is derived from the
+    key and the contour's seed (one column per coefficient index, so a column
+    means the same thing whatever the selection mask).  Its columns are
+    restricted to ``selected`` and the rows are Gram-Schmidt orthonormalized in
+    order.  With ``L`` selected coefficients the result has ``min(spread, L)``
+    rows and ``L`` columns.
+    """
+    count = len(selected)
+    uniform = dithers(key, f"stdm-g|{seed}", 2 * spread * count).reshape(2, spread, count)
+    gaussian = np.sqrt(-2 * np.log(uniform[0])) * np.cos(2 * np.pi * uniform[1])
+    restricted = gaussian[:, selected]
+    rows = min(spread, restricted.shape[1])
+    q, r = np.linalg.qr(restricted[:rows].T)
+    return (q * np.where(np.diag(r) < 0, -1.0, 1.0)).T
+
+
+def spread_dithers(key: bytes, seed: str, spread: int) -> np.ndarray:
+    """Dithers of the projected carriers; PRF inputs are disjoint from ``spread_matrix``'s."""
+    return dithers(key, f"stdm-d|{seed}", spread)
+
+
+def spread_step(delta: float, selected: int, rows: int) -> float:
+    """Projection lattice step giving the same expected distortion as plain QIM.
+
+    Plain QIM moves L magnitudes by U(-delta/2, delta/2) each; quantizing P
+    orthonormal projections to step delta * sqrt(L / P) spends the same energy.
+    """
+    return delta * math.sqrt(selected / rows)
 
 
 def _straightness(points: np.ndarray) -> float:
@@ -294,6 +339,8 @@ def score(observations: list[Observation], key: bytes, params: SpectralParameter
     """
     if params.scheme == "ss":
         return _score_spread_spectrum(observations, key, params)
+    if params.spread_active:
+        return _score_spread_transform(observations, key, params)
     groups: dict[str, np.ndarray] = {}
     for observation in observations:
         phasors = np.exp(2j * np.pi * observation.magnitudes / params.delta) * observation.selected
@@ -316,6 +363,82 @@ def score(observations: list[Observation], key: bytes, params: SpectralParameter
     weight_array = np.concatenate(weights) if weights else np.zeros(0)
     global_log_p = chernoff_log_p(statistic, weight_array)
     # Union bound over contours: valid even when contours share a seed.
+    minimum_log_p = min(0.0, math.log(len(contour_log_p)) + min(contour_log_p)) if contour_log_p else 0.0
+    combined = min(0.0, math.log(2) + min(global_log_p, minimum_log_p))
+    return {
+        "statistic": statistic,
+        "max_statistic": float(weight_array.sum()),
+        "log10_p_value": combined / math.log(10),
+        "p_value": math.exp(combined),
+        "log10_p_global": global_log_p / math.log(10),
+        "log10_p_min_contour": minimum_log_p / math.log(10),
+        "groups": len(groups),
+        "terms": int(np.count_nonzero(weight_array)),
+        "per_contour": per_contour,
+    }
+
+
+def spread_carriers(observation: Observation, key: bytes, params: SpectralParameters) -> tuple[np.ndarray, float]:
+    """(projections y_j = g_j . m, lattice step) of one contour under STDM."""
+    matrix = spread_matrix(key, observation.seed, observation.selected, params.spread)
+    values = matrix @ observation.magnitudes[observation.selected]
+    return values, spread_step(params.delta, int(observation.selected.sum()), len(values))
+
+
+def _score_spread_transform(observations: list[Observation], key: bytes, params: SpectralParameters) -> dict:
+    """Detector for spread-transform dither modulation (``spread = P > 0``).
+
+    A contour with seed ``s`` and ``L`` selected coefficients carries
+    ``P' = min(P, L)`` projections ``y_j = g_j . m`` of its selected
+    magnitudes onto keyed orthonormal rows ``g_j`` (``spread_matrix``), each
+    quantized to step ``delta * sqrt(L / P')`` with dither ``d_j``
+    (``spread_dithers``).  Contours sharing a seed share ``d``, so they are
+    pooled: the group term for row ``j`` is ``Re(A_j exp(-2 pi i d_j))`` with
+    ``A_j = sum_c exp(2 pi i y_cj / step_c)`` over the group's contours that
+    have a row ``j`` (they need not share a mask, a step or ``G``).
+
+    Validity.  Fix a document independently of the key and idealize HMAC as
+    a random function.  Seeds and selection masks are functions of the
+    document alone.  ``G`` and ``d`` are read from the PRF at disjoint
+    inputs ("stdm-g|seed|block" versus "stdm-d|seed|block"), and different
+    seeds use disjoint inputs, so the ``d_j`` of all groups are i.i.d.
+    uniform on [0, 1) and independent of every ``G``.  Conditional on all
+    ``G`` the ``A_j`` are constants, and each term is ``|A_j| cos(2 pi U_j)``
+    with independent uniform ``U_j`` -- exactly the law bounded by
+    ``chernoff_log_p`` with weights ``|A_j|``.  The weights depend on the key
+    through ``G`` only, so the bound holds conditionally on ``G`` and hence
+    unconditionally.  The per-contour test uses the same argument with unit
+    weights; contours that share dithers are dependent, which the union
+    bound over contours does not need.  The two tests are combined with a
+    Bonferroni factor of two, as for plain QIM.
+
+    What the argument does not need: the verifier's mask matching the
+    embedder's.  A mismatch costs power (that contour's rows change), never
+    validity.
+    """
+    width = params.spread
+    groups: dict[str, np.ndarray] = {}
+    per_contour = []
+    contour_log_p = []
+    for observation in observations:
+        values, step = spread_carriers(observation, key, params)
+        phasors = np.exp(2j * np.pi * values / step)
+        padded = np.zeros(width, dtype=complex)
+        padded[: len(phasors)] = phasors
+        groups[observation.seed] = groups.get(observation.seed, 0) + padded
+        offsets = np.exp(-2j * np.pi * spread_dithers(key, observation.seed, width))[: len(phasors)]
+        terms = np.real(phasors * offsets)
+        log_p = chernoff_log_p(float(terms.sum()), np.ones(len(terms)))
+        contour_log_p.append(log_p)
+        per_contour.append({"contour": observation.index, "seed": observation.seed, "terms": len(terms), "mean_alignment": float(terms.mean()), "log10_p": log_p / math.log(10)})
+    statistic = 0.0
+    weights = []
+    for seed, sums in groups.items():
+        offsets = np.exp(-2j * np.pi * spread_dithers(key, seed, width))
+        statistic += float(np.real(sums * offsets).sum())
+        weights.append(np.abs(sums))
+    weight_array = np.concatenate(weights) if weights else np.zeros(0)
+    global_log_p = chernoff_log_p(statistic, weight_array)
     minimum_log_p = min(0.0, math.log(len(contour_log_p)) + min(contour_log_p)) if contour_log_p else 0.0
     combined = min(0.0, math.log(2) + min(global_log_p, minimum_log_p))
     return {
@@ -356,7 +479,11 @@ def capacity(source: bytes, params: SpectralParameters | None = None, visibility
     observations = observe(document, params)
     groups: dict[str, np.ndarray] = {}
     for observation in observations:
-        groups[observation.seed] = groups.get(observation.seed, 0) + observation.selected.astype(float)
+        carried = observation.selected.astype(float)
+        if params.spread_active:
+            # Keyless: a contour carries min(spread, L) projections.
+            carried = (np.arange(params.spread) < int(observation.selected.sum())).astype(float)
+        groups[observation.seed] = groups.get(observation.seed, 0) + carried
     weights = np.concatenate(list(groups.values())) if groups else np.zeros(0)
     weights = weights[weights > 0]
     attainable = chernoff_log_p(float(weights.sum()), weights) / math.log(10) if len(weights) else 0.0
@@ -721,6 +848,72 @@ def _solve(model: _HandleModel, theta: np.ndarray, targets: np.ndarray, mask: np
     return theta, error
 
 
+def _spread_targets(values: np.ndarray, matrix: np.ndarray, offsets: np.ndarray, step: float) -> np.ndarray:
+    """Lattice points for the projections that the magnitudes can actually reach.
+
+    Magnitudes cannot go below zero (every band coefficient of a circle
+    starts there), so the nearest lattice point may be infeasible.  Among the
+    nearest point and its neighbours one step away in each projection, take
+    the one whose minimum-norm magnitude change keeps all magnitudes
+    non-negative and is smallest.  This is the STDM analogue of plain QIM
+    moving a negative lattice point up by one step.
+    """
+    projected = matrix @ values
+    nearest = np.round(projected / step - offsets)
+    grids = np.meshgrid(*[np.array([0.0, -1.0, 1.0])] * len(projected), indexing="ij")
+    shifts = np.stack([grid.ravel() for grid in grids], axis=1)
+    candidates = step * (nearest + shifts + offsets)
+    changes = (candidates - projected) @ matrix
+    violation = np.clip(-(values + changes), 0, None).sum(axis=1)
+    cost = np.linalg.norm(changes, axis=1)
+    feasible = violation <= 1e-12
+    best = int(np.argmin(np.where(feasible, cost, np.inf))) if feasible.any() else int(np.lexsort((cost, violation))[0])
+    return candidates[best]
+
+
+def _solve_spread(model: _HandleModel, theta: np.ndarray, matrix: np.ndarray, targets: np.ndarray, mask: np.ndarray, step: float, params: SpectralParameters) -> tuple[np.ndarray, np.ndarray]:
+    """Minimum-norm Gauss-Newton on the keyed projections of the selected magnitudes.
+
+    Only the ``len(targets)`` projections are constrained; the component of
+    the magnitude vector orthogonal to the keyed rows is left free.
+    """
+    current = model.features(theta)
+    error = targets - matrix @ np.abs(current)[mask]
+    for _ in range(params.iterations):
+        if np.max(np.abs(error)) < 0.02 * params.delta:
+            break
+        magnitude_rows = model.rows(current, model.jacobian(theta, current))[mask]
+        # A (near-)zero magnitude can only grow, whichever way its complex
+        # coefficient moves.  If the linear step asks one to shrink, hold it
+        # at zero instead (an active-set constraint) and let the others carry
+        # the projection.
+        at_zero = np.abs(current)[mask] <= 0.05 * params.delta
+        held = np.zeros(len(at_zero), dtype=bool)
+        update = np.zeros_like(theta)
+        for _ in range(4):
+            rows = np.vstack([matrix @ magnitude_rows, magnitude_rows[held]])
+            wanted = np.concatenate([error, np.zeros(int(held.sum()))])
+            gram = rows @ rows.T
+            damping = 1e-9 * (np.trace(gram) / len(gram) + 1e-12)
+            update = rows.T @ np.linalg.solve(gram + damping * np.eye(len(gram)), wanted)
+            shrinking = at_zero & ~held & (magnitude_rows @ update < 0)
+            if not shrinking.any():
+                break
+            held |= shrinking
+        improved = False
+        for scale in (1.0, 0.5, 0.25, 0.125):
+            candidate = theta + scale * update
+            values = model.features(candidate)
+            candidate_error = targets - matrix @ np.abs(values)[mask]
+            if np.linalg.norm(candidate_error) < np.linalg.norm(error):
+                theta, current, error = candidate, values, candidate_error
+                improved = True
+                break
+        if not improved:
+            break
+    return theta, error
+
+
 def _densified(contour: Contour, rounds: int) -> Contour:
     """Split long curved segments so handles can realize the modeled field."""
     subpath = contour.subpath
@@ -761,14 +954,28 @@ def _embed_contour(contour: Contour, key: bytes, params: SpectralParameters) -> 
     samples, _ = contour_samples(contour, params.samples)
     seed = descriptor(samples, contour.closed, params.seed_bin)
     subpath, info = contour.subpath, {}
-    for attempt in range(3):
-        subpath, info = _embed_with_seed(contour, key, params, seed)
-        if info["seed_stable"]:
-            break
-        seed = info["marked_seed"]
+    if params.spread_active:
+        # The keyed projection depends on the verifier's selection mask as
+        # well as the seed, so both must be fixed points of embedding.
+        carrier_mask = None
+        for attempt in range(4):
+            subpath, info = _embed_with_seed(contour, key, params, seed, carrier_mask)
+            if info["seed_stable"] and info["mask_stable"]:
+                break
+            seed, carrier_mask = info["marked_seed"], np.array(info["marked_mask"], dtype=bool)
+            if not carrier_mask.any():
+                break
+    else:
+        for attempt in range(3):
+            subpath, info = _embed_with_seed(contour, key, params, seed)
+            if info["seed_stable"]:
+                break
+            seed = info["marked_seed"]
     info["seed_attempts"] = attempt + 1
     if not info["seed_stable"]:
         info["status"] = "skipped_unstable_seed"
+    elif not info.get("mask_stable", True):
+        info["status"] = "skipped_unstable_mask"
     elif info["curve_max_displacement"] > params.max_relative_displacement * info["mean_radius"]:
         info["status"] = "skipped_distortion"
     else:
@@ -776,11 +983,17 @@ def _embed_contour(contour: Contour, key: bytes, params: SpectralParameters) -> 
     return (subpath if info["status"] == "marked" else contour.subpath), info
 
 
-def _embed_with_seed(contour: Contour, key: bytes, params: SpectralParameters, seed: str) -> tuple[Subpath, dict]:
+def _embed_with_seed(contour: Contour, key: bytes, params: SpectralParameters, seed: str, carrier_mask: np.ndarray | None = None) -> tuple[Subpath, dict]:
     samples, _ = contour_samples(contour, params.samples)
     offsets = dithers(key, seed, params.k_count)
     geometric = _GeometricModel(samples, contour.closed, params)
-    wanted = geometric.selection(params.min_gain * params.embed_margin)
+    if params.spread_active:
+        # STDM cannot mark a superset: the projection rows are functions of
+        # the verifier's mask, so the embedder must use exactly that mask
+        # (predicted from the source contour, then corrected by the caller).
+        wanted = geometric.selection() if carrier_mask is None else carrier_mask
+    else:
+        wanted = geometric.selection(params.min_gain * params.embed_margin)
     model = _HandleModel(contour, params)
     realizable = model.selection(params.realize_gain)
     rounds = 0
@@ -791,6 +1004,8 @@ def _embed_with_seed(contour: Contour, key: bytes, params: SpectralParameters, s
     mask = wanted & realizable
     theta = np.zeros(model.parameters)
     original = model.features(theta)
+    if params.spread_active:
+        return _finish_spread(contour, key, params, seed, model, wanted, realizable, rounds)
     if params.scheme == "ss":
         # Additive spread spectrum: push each magnitude by +-delta/2 along its keyed sign.
         targets = np.maximum(np.abs(original) + 0.5 * params.delta * np.where(offsets > 0.5, 1.0, -1.0), 0.0)
@@ -818,6 +1033,52 @@ def _embed_with_seed(contour: Contour, key: bytes, params: SpectralParameters, s
         "verifier_coefficients": int(verifier_mask.sum()),
         "verifier_unmarked": int((verifier_mask & ~mask).sum()),
         "verifier_alignment": float(alignment[verifier_mask].mean()) if verifier_mask.any() else None,
+        "max_handle_displacement": float(displacement.max()) if len(displacement) else 0.0,
+        "curve_rms_over_radius": float(np.sqrt(np.mean(curve_shift ** 2)) / model.mean_radius),
+        "curve_max_displacement": float(curve_shift.max()),
+        "mean_radius": model.mean_radius,
+    }
+
+
+def _finish_spread(contour: Contour, key: bytes, params: SpectralParameters, seed: str, model: _HandleModel, mask: np.ndarray, realizable: np.ndarray, rounds: int) -> tuple[Subpath, dict]:
+    """STDM embedding of one contour for a given seed and carrier mask."""
+    theta = np.zeros(model.parameters)
+    all_dithers = spread_dithers(key, seed, params.spread)
+    error = np.zeros(0)
+    if mask.any():
+        matrix = spread_matrix(key, seed, mask, params.spread)
+        step = spread_step(params.delta, int(mask.sum()), len(matrix))
+        offsets = all_dithers[: len(matrix)]
+        targets = _spread_targets(np.abs(model.features(theta))[mask], matrix, offsets, step)
+        theta, error = _solve_spread(model, theta, matrix, targets, mask, step, params)
+    subpath = model.displaced(theta)
+    marked = Contour(contour.element, contour.subpath_index, subpath, contour.ctm, True, True)
+    marked_samples, _ = contour_samples(marked, params.samples)
+    verifier_mask = _GeometricModel(marked_samples, contour.closed, params).selection()
+    marked_values = np.abs(coefficients(marked_samples, contour.closed, params.band))
+    marked_seed = descriptor(marked_samples, contour.closed, params.seed_bin)
+    alignment = None
+    if verifier_mask.any():
+        # What the verifier will compute, with its own mask and seed.
+        verifier_matrix = spread_matrix(key, marked_seed, verifier_mask, params.spread)
+        verifier_step = spread_step(params.delta, int(verifier_mask.sum()), len(verifier_matrix))
+        projected = verifier_matrix @ marked_values[verifier_mask]
+        alignment = float(np.cos(2 * np.pi * (projected / verifier_step - spread_dithers(key, marked_seed, params.spread)[: len(projected)])).mean())
+    displacement = np.abs(model.normals * (model.basis @ theta)) * model.mean_radius
+    curve_shift = _curve_distance(marked_samples, contour_samples(contour, 4 * params.samples)[0])
+    return subpath, {
+        "seed": seed,
+        "marked_seed": marked_seed,
+        "seed_stable": marked_seed == seed,
+        "mask_stable": bool(np.array_equal(verifier_mask, mask)),
+        "marked_mask": [bool(v) for v in verifier_mask],
+        "embedded_coefficients": int(mask.sum()),
+        "embedded_projections": int(len(error)),
+        "unrealized_coefficients": int((mask & ~realizable).sum()),
+        "densify_rounds": rounds,
+        "verifier_coefficients": int(verifier_mask.sum()),
+        "verifier_unmarked": int((verifier_mask & ~mask).sum()),
+        "verifier_alignment": alignment,
         "max_handle_displacement": float(displacement.max()) if len(displacement) else 0.0,
         "curve_rms_over_radius": float(np.sqrt(np.mean(curve_shift ** 2)) / model.mean_radius),
         "curve_max_displacement": float(curve_shift.max()),

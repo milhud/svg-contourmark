@@ -83,13 +83,23 @@ def main() -> None:
     done = set()
     if args.output.exists():
         done = {json.loads(line)["file"] for line in args.output.read_text().splitlines() if line.strip()}
-    plain = [r for r in records if not r["marked"]]
+    plain = [dict(r, _dir=str(args.samples_dir)) for r in records if not r["marked"]]
+    if not plain:
+        # Marked-only run: borrow composition partners from a sibling run at
+        # the same top-p (plain samples do not depend on the sampler variant).
+        top_p = detector_settings(args.samples_dir)["top_p"]
+        for sibling in sorted(args.samples_dir.parent.iterdir()):
+            if sibling.is_dir() and sibling != args.samples_dir and (sibling / "samples.jsonl").exists() and detector_settings(sibling)["top_p"] == top_p:
+                rows = [json.loads(line) for line in (sibling / "samples.jsonl").read_text().splitlines() if line.strip()]
+                plain = [dict(r, _dir=str(sibling)) for r in rows if not r["marked"] and (sibling / r["file"]).exists()]
+                if plain:
+                    break
     tasks = []
     for index, record in enumerate(records):
         if record["file"] in done:
             continue
         others = [p for p in plain if p["prompt"] != record["prompt"]] or [p for p in plain if p["file"] != record["file"]]
-        partners = [(args.samples_dir / others[(index + k * 7) % len(others)]["file"]).read_bytes() for k in range(3)] if others else []
+        partners = [(Path(o["_dir"]) / o["file"]).read_bytes() for o in (others[(index + k * 7) % len(others)] for k in range(3))] if others else []
         tasks.append((record, str(args.samples_dir), partners, args.attacks))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     started = time.time()

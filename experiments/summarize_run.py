@@ -36,6 +36,7 @@ def main() -> None:
         settings = detector_settings(args.run / name)
         sampler = settings["sampler"]
         label = sampler.get("mode", "gumbel") + ("-" + sampler.get("reuse", "mask") if sampler.get("mode", "gumbel") == "gumbel" else f"-{sampler.get('delta'):g}")
+        label = settings["params"].get("scheme", "vertex") + "/" + label
         identity = summary["attacks"].get("identity", {})
         row = {
             "name": name, "sampler": label, "top_p": settings["top_p"], "key": settings["key_label"],

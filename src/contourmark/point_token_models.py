@@ -207,6 +207,16 @@ def watermarked_step(state: DecodeState, logits: np.ndarray, watermark: GeoWater
     Returns (logit index, whether the keyed choice was applied).
     """
     ids, probs = truncate(logits, top_p, top_k, temperature)
+    if watermark is not None:
+        state.tracker.params = watermark.params  # descriptors must use the sampler's quantization
+    if watermark is not None and watermark.params.scheme == "polygon":
+        # Every point of a line or curve is a keyed decision.
+        if state.pending in ("L", "C") and state.subpaths and len(ids) > 1 and len(state.points) < state.grammar.arity[state.pending]:
+            points = [state.grammar.point(int(i) - token_offset) for i in ids]
+            if any(point is not None for point in points):
+                choice = watermark.choose_point(state.tracker, state.points, points, probs, line=state.pending == "L")
+                return int(ids[choice.index]), choice.keyed
+        return int(rng.choice(ids, p=probs)), False
     endpoint, controls = state.endpoint_slot()
     if watermark is not None and len(ids) > 1 and state.handle_slot():
         handles = [state.grammar.point(int(i) - token_offset) for i in ids]

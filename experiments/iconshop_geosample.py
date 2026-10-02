@@ -129,6 +129,7 @@ def main() -> None:
     parser.add_argument("--gamma", type=float, default=0.5, help="green fraction (bias mode)")
     parser.add_argument("--reuse", choices=["mask", "allow"], default="mask", help="allow: naive score reuse (ablation, not distribution-preserving)")
     parser.add_argument("--key-label", default="evaluation", help="selects a public benchmark key")
+    parser.add_argument("--scheme", choices=["vertex", "polygon"], default="vertex", help="polygon keys every control-polygon point, in context")
     parser.add_argument("--marked-only", action="store_true", help="skip plain samples (they do not depend on the sampler variant)")
     args = parser.parse_args()
     if not 0 <= args.shard < args.num_shards:
@@ -136,6 +137,7 @@ def main() -> None:
     if args.batch < 1 or args.samples_per_prompt < 1 or args.max_tokens < 1:
         raise SystemExit("batch, samples-per-prompt and max-tokens must be positive")
     device = torch.device(args.device)
+    params = GeoParameters(scheme=args.scheme)
     key = evaluation_key(args.key_label)
     wrong = evaluation_key(args.key_label, wrong=True)
     statistic = "green" if args.mode == "bias" else "gamma"
@@ -154,7 +156,7 @@ def main() -> None:
         "seed_base": args.seed_base, "samples_per_prompt": args.samples_per_prompt,
         "top_p": args.top_p, "temperature": args.temperature, "max_tokens": args.max_tokens,
         "shard": args.shard, "num_shards": args.num_shards, "device": str(device),
-        "watermark": asdict(GeoParameters()), "key_id": hashlib.sha256(key).hexdigest(),
+        "watermark": asdict(params), "key_id": hashlib.sha256(key).hexdigest(),
         "sampler": sampler, "key_label": args.key_label, "marked_only": args.marked_only,
         "files": {str(path.relative_to(ROOT)): file_digest(path) for path in files},
         "packages": {name: importlib.metadata.version(name) for name in ("torch", "transformers", "numpy", "scipy")},
@@ -173,16 +175,16 @@ def main() -> None:
         todo = [(p, s) for p, s in jobs if (p, s, marked) not in done]
         for start in range(0, len(todo), args.batch):
             chunk = todo[start:start + args.batch]
-            watermark = GeoWatermark(key, seed=chunk[0][1], reuse=args.reuse, mode=args.mode, delta=args.delta, gamma=args.gamma) if marked else None
+            watermark = GeoWatermark(key, params, seed=chunk[0][1], reuse=args.reuse, mode=args.mode, delta=args.delta, gamma=args.gamma) if marked else None
             results = generate(model, tokenizer, cfg, [p for p, _ in chunk], [s for _, s in chunk], watermark, device, args.top_p, args.temperature, args.max_tokens)
             with log.open("a") as stream:
                 for result in results:
                     name = f"{'wm' if marked else 'plain'}_{result['prompt'].replace(' ', '_')}_{result['seed']}.svg"
                     (args.output / name).write_bytes(result["svg"])
-                    check = detect(result["svg"], key, statistic=statistic, gamma=args.gamma)
+                    check = detect(result["svg"], key, params, statistic=statistic, gamma=args.gamma)
                     record = {k: v for k, v in result.items() if k != "svg"}
                     record.update({"run_id": run_id, "marked": marked, "file": name, "log10_p": check["log10_p_value"], "distinct_vertices": check["distinct_vertices"],
-                                   "wrong_key_log10_p": detect(result["svg"], wrong, statistic=statistic, gamma=args.gamma)["log10_p_value"], "top_p": args.top_p, "temperature": args.temperature})
+                                   "wrong_key_log10_p": detect(result["svg"], wrong, params, statistic=statistic, gamma=args.gamma)["log10_p_value"], "top_p": args.top_p, "temperature": args.temperature})
                     stream.write(json.dumps(record) + "\n")
             print(f"{'marked' if marked else 'plain'} {start + len(chunk)}/{len(todo)}", flush=True)
 

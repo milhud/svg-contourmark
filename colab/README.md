@@ -91,7 +91,7 @@ Note the time this took; it predicts the full run. If the loader raises `checkpo
 
 ## 6. Full run
 
-**Note:** `colab/run_single_gpu.sh` always runs the experiment currently queued in the repository. Right now that is the variant experiment described under "Run 2" below (12 configurations, written directly into `OUT`; use a new `RUN_NAME`). The original two-configuration run described in this section is `colab/run1.sh`.
+**Note:** `colab/run_single_gpu.sh` always runs the experiment currently queued in the repository. Right now that is the variant experiment described under "Run 2" below (16 configurations, written directly into `OUT`; use a new `RUN_NAME`). The original two-configuration run described in this section is `colab/run1.sh`.
 
 ```bash
 OUT=/content/drive/MyDrive/contourmark_runs/run1 TOP_PS="0.5 0.9" SEEDS=4 BATCH=16 bash colab/run_single_gpu.sh
@@ -152,19 +152,20 @@ Run 2 answers the questions run 1 raised. It needs the setup from sections 0–4
 !OUT=/content/drive/MyDrive/contourmark_runs/run2_variants SEEDS=8 BATCH=16 bash colab/run2.sh
 ```
 
-Without Drive, use `OUT=/content/runs/run2_variants`. The script installs SVGO itself if it is missing and stops with a clear message if that fails. A correct start prints `svgo: ok` and then `mask_p05: ... samples`. When it ends, `OUT` contains twelve configuration folders (`mask_p05` … `mask_p09_key2`) and `RUN_SUMMARY.md`; if you only see `iconshop_p05` and `iconshop_p09`, the wrong cell was run.
+Without Drive, use `OUT=/content/runs/run2_variants`. The script installs SVGO itself if it is missing and stops with a clear message if that fails. A correct start prints `svgo: ok` and then `mask_p05: ... samples`. If you only see `iconshop_p05` and `iconshop_p09`, the wrong cell was run.
 
-What it generates (30 prompts × `SEEDS` each):
+The queue has 16 configurations (30 prompts × `SEEDS` each). Each one is evaluated (attack suite, key-randomized null, refreshed `RUN_SUMMARY.md`) as soon as it is generated, so a session that stops early still leaves usable results. Order:
 
-| Group | Configurations | Purpose |
+| Order | Folders | Purpose |
 |---|---|---|
-| A | distribution-preserving sampler at top-p 0.5, 0.7, 0.8, 0.9, 1.0 (plain + marked) | Detection and quality against top-p |
-| B | at top-p 0.5 and 0.9, marked only: naive reuse; bias δ=2; bias δ=4 | Does a non-preserving sampler buy power on a real model, and at what quality cost? |
-| C | second key at top-p 0.9, marked only | How much do results depend on the key? |
+| 1–6 | `mask_p05`, `poly_p05`, `mask_p09`, `poly_p09`, `mask_p07`, `poly_p07` | **Main question:** does the new control-polygon scheme (`poly_*`, `--scheme polygon`) detect more often than the vertex scheme (`mask_*`) at the same top-p? |
+| 7–9 | `bias4_p05`, `allow_p05`, `bias2_p05` | Non-preserving samplers at the default top-p: power against quality cost |
+| 10 | `poly_p05_key2` | Dependence on the key |
+| 11–16 | `mask_p08`, `mask_p10`, `poly_p10`, `allow_p09`, `bias2_p09`, `bias4_p09` | Remaining grid |
 
-Then, for every configuration, it runs the attack suite (SVGO must be installed; the script stops if it is not), a key-randomized null where plain samples exist, and a CLIP prompt-retrieval quality score. It finishes with one table, `RUN_SUMMARY.md`.
+`mask_*` runs contain plain and marked samples; the others are marked only and borrow the plain samples of the `mask_*` run at the same top-p for composition and the null. A final step adds a CLIP prompt-retrieval quality score.
 
-- **Time:** about 2.5 hours on an A100 at `SEEDS=8`; use `SEEDS=4` for about half. It resumes if interrupted.
+- **Time:** about 3 hours on an A100 at `SEEDS=8`; use `SEEDS=4` for about half. The first four configurations matter most. It resumes if interrupted.
 - **Downloads:** the CLIP model `openai/clip-vit-base-patch32` (about 600 MB) on first use.
 - **Report:** print `cat $OUT/RUN_SUMMARY.md`, `cat $OUT/environment.txt $OUT/commit.txt`, and the `levels` of each `*_null.json`. Then zip and download `OUT` as in section 8.
 - Group B results may show stronger detection with lower CLIP accuracy. That trade-off is the measurement; report both numbers.

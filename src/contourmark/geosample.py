@@ -67,11 +67,20 @@ class GeoParameters:
     # 45, 60 and 90 degrees away from every edge.  Runs made before this
     # parameter existed used 0.0.
     bin_offset: float = 0.37
+    # "vertex": one keyed decision per segment endpoint (chord corner) and one
+    # per curve's first handle.  "polygon": every point of the control polygon
+    # (both handles and the endpoint) is a keyed decision, keyed together with
+    # its neighbour's descriptor.  Polygon mode has about three decisions per
+    # cubic and a far larger key space, but depends on the control polygon and
+    # so is not invariant to degree elevation.
+    scheme: str = "vertex"
     threshold: float = 1e-6
 
     def validate(self) -> None:
         if not 0 < self.angle_step <= 45 or not 0 < self.ratio_step <= 1 or not 0 < self.bulge_step <= 1:
             raise GeometryError("invalid geosample quantization")
+        if self.scheme not in ("vertex", "polygon"):
+            raise GeometryError("scheme must be 'vertex' or 'polygon'")
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +100,7 @@ class Segment2:
     # quadratic and its degree-elevated cubic agree.
     out_handle: complex = 0j  # derivative at the start (chord for lines)
     in_handle: complex = 0j  # derivative at the end (chord for lines)
+    controls: tuple = ()  # interior control points, for the polygon scheme
 
     def __post_init__(self) -> None:
         if self.straight or self.out_handle == 0:
@@ -190,6 +200,58 @@ def contour_descriptors(segments: list[Segment2], closed: bool, params: GeoParam
     return out
 
 
+def knot_descriptor(before: complex, knot: complex, after: complex, on_curve: bool, params: GeoParameters) -> tuple | None:
+    """Descriptor of one control-polygon point from its two neighbours.
+
+    Interior angle at the point and |log| ratio of the two adjacent polygon
+    edges.  Reversing the traversal swaps the neighbours, which changes
+    neither; mirroring and similarity transforms do not either.
+    """
+    a, b = before - knot, after - knot
+    la, lb = abs(a), abs(b)
+    if la <= 1e-12 or lb <= 1e-12:
+        return None
+    angle = math.degrees(abs(np.angle(b / a)))
+    if angle >= 180 - params.straight_tolerance:
+        return None
+    log_ratio = abs(math.log(la / lb))
+    if log_ratio > params.max_log_ratio:
+        return None
+    o = params.bin_offset
+    return ("k", int(on_curve), math.floor(angle / params.angle_step + o), math.floor(log_ratio / params.ratio_step + o))
+
+
+def pair_key(previous: tuple | None, current: tuple) -> tuple:
+    """Key for a descriptor in the context of its neighbour (unordered)."""
+    if previous is None:
+        return ("s", current)
+    first, second = sorted((previous, current), key=str)
+    return ("p", first, second)
+
+
+def polygon_points(segments: list[Segment2]) -> tuple[list[complex], list[bool]]:
+    """Control polygon of merged segments: points and on-curve flags."""
+    if not segments:
+        return [], []
+    points, flags = [segments[0].start], [True]
+    for segment in segments:
+        for control in segment.controls:
+            points.append(control)
+            flags.append(False)
+        points.append(segment.end)
+        flags.append(True)
+    return points, flags
+
+
+def polygon_keys(segments: list[Segment2], params: GeoParameters) -> list[tuple]:
+    """Context-paired knot keys of one contour (open traversal)."""
+    points, flags = polygon_points(_merge_straight(segments, params))
+    knots: list[tuple | None] = [None] * len(points)
+    for i in range(1, len(points) - 1):
+        knots[i] = knot_descriptor(points[i - 1], points[i], points[i + 1], flags[i], params)
+    return [pair_key(knots[i - 1], knots[i]) for i in range(1, len(points) - 1) if knots[i] is not None]
+
+
 def keyed_uniform(key: bytes, descriptor: tuple[int, ...]) -> float:
     digest = hmac.digest(key, ("geosample-v2|" + ",".join(map(str, descriptor))).encode(), "sha256")
     integer = int.from_bytes(digest[:8], "big") >> 11
@@ -224,12 +286,12 @@ class PathTracker:
 
     def cubic_to(self, c1: complex, c2: complex, point: complex) -> None:
         if self.current is not None:
-            self.segments.append(Segment2(self.current, point, bulge_of(cubic_points(self.current, c1, c2, point)), False, 3 * (c1 - self.current), 3 * (point - c2)))
+            self.segments.append(Segment2(self.current, point, bulge_of(cubic_points(self.current, c1, c2, point)), False, 3 * (c1 - self.current), 3 * (point - c2), (c1, c2)))
         self.current = point
 
     def quad_to(self, c: complex, point: complex) -> None:
         if self.current is not None:
-            self.segments.append(Segment2(self.current, point, bulge_of(quad_points(self.current, c, point)), False, 2 * (c - self.current), 2 * (point - c)))
+            self.segments.append(Segment2(self.current, point, bulge_of(quad_points(self.current, c, point)), False, 2 * (c - self.current), 2 * (point - c), (c,)))
         self.current = point
 
     def candidate_descriptor(self, end: complex | None, controls: Sequence[complex] = (), before: list[Segment2] | None = None) -> tuple[int, int, int] | None:
@@ -258,6 +320,31 @@ class PathTracker:
 
     def merged_history(self) -> list[Segment2]:
         return _merge_straight(self.segments, self.params)
+
+    def candidate_knot_key(self, point: complex | None, pending: Sequence[complex], line: bool, before: list[Segment2] | None = None) -> tuple | None:
+        """Polygon scheme: key fixed by choosing the next control-polygon point.
+
+        The new point determines the descriptor of the *previous* polygon
+        point (the last committed point or the last pending control), which
+        is keyed together with the descriptor before it.
+        """
+        if point is None or self.current is None:
+            return None
+        before = self.merged_history() if before is None else before
+        points, flags = polygon_points(before) if before else ([self.current], [True])
+        points = points + list(pending)
+        flags = flags + [False] * len(pending)
+        if len(points) < 2:
+            return None
+        if line and not pending and before and before[-1].straight:
+            a, b = before[-1].end - before[-1].start, point - points[-1]
+            if abs(b) > 1e-12 and abs(math.degrees(abs(np.angle(b / a)))) <= self.params.straight_tolerance:
+                return None  # continues a straight run; the run is merged
+        knot = knot_descriptor(points[-2], points[-1], point, flags[-1], self.params)
+        if knot is None:
+            return None
+        previous = knot_descriptor(points[-3], points[-2], points[-1], flags[-2], self.params) if len(points) >= 3 else None
+        return pair_key(previous, knot)
 
     def candidate_tangent(self, handle: complex | None, before: list[Segment2] | None = None) -> tuple | None:
         """Descriptor fixed by choosing the first control point of a curve."""
@@ -339,6 +426,12 @@ class GeoWatermark:
         descriptors = [tracker.candidate_tangent(handle, before) for handle in handles]
         return self._gumbel(descriptors, probabilities)
 
+    def choose_point(self, tracker: PathTracker, pending: Sequence[complex], points: Sequence[complex | None], probabilities: Sequence[float], line: bool) -> Choice:
+        """Polygon scheme: pick the next control-polygon point (handle or endpoint)."""
+        before = tracker.merged_history()
+        descriptors = [tracker.candidate_knot_key(point, pending, line, before) for point in points]
+        return self._gumbel(descriptors, probabilities)
+
     def _gumbel(self, descriptors: list[tuple | None], probabilities: Sequence[float]) -> Choice:
         """Gumbel-max over descriptor groups (keyed) and free candidates (unkeyed)."""
         probabilities = np.asarray(probabilities, dtype=float)
@@ -413,15 +506,20 @@ def document_descriptors(source: bytes | Document, params: GeoParameters) -> lis
                 # Same 32-sample bulge estimate as the sampler, so sampler and
                 # detector cannot disagree near a bin boundary.
                 curve = cubic_points(*[complex(p) for p in points])
-                segments.append(Segment2(complex(points[0]), complex(points[3]), bulge_of(curve), False, 3 * complex(points[1] - points[0]), 3 * complex(points[3] - points[2])))
+                segments.append(Segment2(complex(points[0]), complex(points[3]), bulge_of(curve), False, 3 * complex(points[1] - points[0]), 3 * complex(points[3] - points[2]), (complex(points[1]), complex(points[2]))))
             elif segment.kind == "Q":
                 curve = quad_points(*[complex(p) for p in points])
-                segments.append(Segment2(complex(points[0]), complex(points[2]), bulge_of(curve), False, 2 * complex(points[1] - points[0]), 2 * complex(points[2] - points[1])))
+                segments.append(Segment2(complex(points[0]), complex(points[2]), bulge_of(curve), False, 2 * complex(points[1] - points[0]), 2 * complex(points[2] - points[1]), (complex(points[1]),)))
             else:  # arcs: derivatives from dense samples over the unit parameter
                 dense = apply_affine(contour.ctm, dense_points(type(contour.subpath)([segment], False)))
                 scale = len(dense) - 1
-                segments.append(Segment2(complex(dense[0]), complex(dense[-1]), bulge_of(dense), False, complex(dense[1] - dense[0]) * scale, complex(dense[-1] - dense[-2]) * scale))
-        out.append(contour_descriptors(segments, contour.closed or closes(contour.subpath), params))
+                out_d, in_d = complex(dense[1] - dense[0]) * scale, complex(dense[-1] - dense[-2]) * scale
+                # Arcs have no control polygon; use the cubic-equivalent handles.
+                segments.append(Segment2(complex(dense[0]), complex(dense[-1]), bulge_of(dense), False, out_d, in_d, (complex(dense[0]) + out_d / 3, complex(dense[-1]) - in_d / 3)))
+        if params.scheme == "polygon":
+            out.append(polygon_keys(segments, params))
+        else:
+            out.append(contour_descriptors(segments, contour.closed or closes(contour.subpath), params))
     return out
 
 

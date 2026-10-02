@@ -1,0 +1,33 @@
+wrapper                                                    | ink(px) | geosample strict        | spectral strict       | geosample render-mode
+baseline (visible)                                         |  8441/12489 | detected        -13.5 | detected        -23.4 | detected
+fill=transparent                                           |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+fill=rgba(0,0,0,0)                                         |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+fill=white (background colour)                             |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+fill=url(#missing)                                         |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+ancestor opacity=0.001                                     |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+ancestor style opacity:0.002                               |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+ancestor opacity=-1 (clamps to 0)                          |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+style display:none !important                              |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+style DISPLAY:NONE (case)                                  |  8441/12489 | detected        -13.5 | detected        -23.4 | detected
+parent visibility=hidden, child visibility=inherit         |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+parent display=none attr, child style display:inline       |     0/    0 | not_detected      0.0 | not_detected      0.0 | not_detected
+zero-size viewBox                                          |    -1/   -1 | detected        -13.5 | detected        -23.4 | detected
+root width=0 height=0                                      |    -1/   -1 | detected        -13.5 | detected        -23.4 | detected
+no viewBox, width/height=200, translate far off-canvas     |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+transform scale(0.0005)                                    |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+transform matrix(1e-4 0 0 1e-4 100 100)                    |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+viewport shows one corner only (viewBox 0 0 200 200, trans |   270/  164 | detected         -8.0 | detected        -20.0 | detected
+occluded by opaque white rect drawn later                  |     0/    0 | detected        -13.4 | detected        -22.2 | detected
+<switch>, second (never rendered) child                    |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+systemLanguage that never matches                          |  8441/12489 | detected        -13.5 | detected        -23.4 | detected
+requiredExtensions unsupported                             |  8441/12489 | detected        -13.5 | detected        -23.4 | detected
+wrapper element in a foreign namespace                     |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+<use> of a zero-size <symbol> viewport                     |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+fill=none, stroke-width=0em                                |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+fill=none, stroke=transparent                              |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+fill=none, stroke-width=1e-7                               |     0/    0 | detected        -13.5 | detected        -23.4 | detected
+fill=none, stroke-dasharray 0 9999                         |     0/    3 | detected        -13.5 | detected        -23.4 | detected
+CONTROL display=none                                       |     0/    0 | not_detected      0.0 | not_detected      0.0 | not_detected
+CONTROL style opacity:0                                    |     0/    0 | not_detected      0.0 | not_detected      0.0 | not_detected
+CONTROL fill=none stroke-width=0                           |     0/    0 | not_detected      0.0 | not_detected      0.0 | not_detected
+CONTROL <use> of defs path, use display=none               |     0/    0 | not_detected      0.0 | not_detected      0.0 | not_detected

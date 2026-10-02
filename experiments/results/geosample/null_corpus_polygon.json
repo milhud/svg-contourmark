@@ -1,0 +1,38 @@
+{
+ "documents": 900,
+ "parameters": {
+  "scheme": "polygon"
+ },
+ "documents_with_vertices": 894,
+ "distinct_vertices_median": 10.0,
+ "keys_per_document": 300,
+ "tests": 268200,
+ "levels": {
+  "0.1": {
+   "rate": 0.0637434750186428,
+   "hits": 17096,
+   "bound": 0.1
+  },
+  "0.01": {
+   "rate": 0.006785980611483967,
+   "hits": 1820,
+   "bound": 0.01
+  },
+  "0.001": {
+   "rate": 0.0007307979120059657,
+   "hits": 196,
+   "bound": 0.001
+  },
+  "0.0001": {
+   "rate": 8.575689783743475e-05,
+   "hits": 23,
+   "bound": 0.0001
+  },
+  "1e-05": {
+   "rate": 0.0,
+   "hits": 0,
+   "bound": 1e-05
+  }
+ },
+ "min_log10_p": -4.992059071394104
+}

@@ -4,7 +4,9 @@ Compares, on the toy point-token generator at several per-step entropies:
 
 * ``gumbel-mask``  distribution-preserving sampler (default);
 * ``gumbel-allow`` naive score reuse (biased; ablation);
-* ``bias-<delta>`` green-list sampler with the matched binomial detector.
+* ``bias-<delta>`` green-list sampler with the matched binomial detector;
+* ``polygon-mask`` / ``polygon-allow`` the control-polygon scheme (every
+  handle and endpoint keyed, in context with its neighbour).
 
 For each variant it reports detection power, the measured group entropy per
 keyed step, the distribution shift the sampler itself introduces (KL per
@@ -24,16 +26,23 @@ from pathlib import Path
 import numpy as np
 
 from contourmark.attacks import standard_suite
-from contourmark.geosample import GeoWatermark, detect
+from contourmark.geosample import GeoParameters, GeoWatermark, detect
 from contourmark.toygen import toy_drawing
 
 KEY = hashlib.sha256(b"sampler-lab-key").digest()
 ATTACKS = ["svgo_default", "round_1dp", "rotate_30", "subdivide", "noise_0.1pct"]
 
 
+POLYGON = GeoParameters(scheme="polygon")
+
+
 def variant(name: str, seed: int) -> tuple[GeoWatermark | None, str]:
     if name == "plain":
         return None, "gamma"
+    if name == "polygon-mask":
+        return GeoWatermark(KEY, POLYGON, seed=seed), "gamma"
+    if name == "polygon-allow":
+        return GeoWatermark(KEY, POLYGON, seed=seed, reuse="allow"), "gamma"
     if name == "gumbel-mask":
         return GeoWatermark(KEY, seed=seed), "gamma"
     if name == "gumbel-allow":
@@ -67,17 +76,18 @@ def main() -> None:
                     watermark, statistic = variant(name, seed)
                     state, stats = toy_drawing(watermark, seed, shapes, vertices, sigma)
                     svg = state.svg()
-                    result = detect(svg, KEY, statistic=statistic)
+                    params = watermark.params if watermark is not None else GeoParameters()
+                    result = detect(svg, KEY, params, statistic=statistic)
                     log_p.append(result["log10_p_value"])
                     distinct.append(result["distinct_vertices"])
                     entropy += stats["entropy"]
                     kl += stats["kl"]
                     for attack in ATTACKS:
                         try:
-                            attacked[attack].append(detect(suite[attack](svg), KEY, statistic=statistic)["log10_p_value"])
+                            attacked[attack].append(detect(suite[attack](svg), KEY, params, statistic=statistic)["log10_p_value"])
                         except Exception:
                             attacked[attack].append(0.0)
-                null = [detect(svg, KEY, statistic=statistic)["log10_p_value"] for svg in plain]
+                null = [detect(svg, KEY, params, statistic=statistic)["log10_p_value"] for svg in plain]
                 rows.append({
                     "size": size, "sigma": sigma, "variant": name, "statistic": statistic, "drawings": args.drawings,
                     "entropy_nats_per_keyed_step": float(np.mean(entropy)) if entropy else None,

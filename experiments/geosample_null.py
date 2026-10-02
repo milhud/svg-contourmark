@@ -34,7 +34,7 @@ LEVELS = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
 
 def score(per_contour: list[list[tuple[int, int, int]]], key: bytes) -> float:
     """log10 p-value, identical to geosample.detect for precomputed descriptors."""
-    distinct = sorted({d for contour in per_contour for d in contour})
+    distinct = sorted({d for contour in per_contour for d in contour}, key=str)
     if not distinct:
         return 0.0
     scores = {d: -math.log(1 - keyed_uniform(key, d)) for d in distinct}
@@ -44,11 +44,11 @@ def score(per_contour: list[list[tuple[int, int, int]]], key: bytes) -> float:
     return math.log10(max(min(1.0, 2 * min(global_p, minimum)), 1e-300))
 
 
-def run(task: tuple[str, int]) -> tuple[str, list[float], int]:
-    path, keys = task
+def run(task: tuple[str, int, dict]) -> tuple[str, list[float], int]:
+    path, keys, settings = task
     source = Path(path).read_bytes()
     try:
-        per_contour = document_descriptors(source, GeoParameters())
+        per_contour = document_descriptors(source, GeoParameters(**settings))
     except Exception:
         return path, [], 0
     distinct = len({d for contour in per_contour for d in contour})
@@ -65,7 +65,15 @@ def main() -> None:
     parser.add_argument("--keys", type=int, default=300)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--scheme", choices=["vertex", "polygon"], help="descriptor scheme (default: the run's own, or vertex)")
     args = parser.parse_args()
+    settings: dict = {}
+    if args.samples_dir:
+        from run_identity import detector_settings
+
+        settings = detector_settings(args.samples_dir)["params"]
+    if args.scheme:
+        settings["scheme"] = args.scheme
     paths: list[str] = []
     if args.corpus:
         paths += [str(ROOT / item["path"]) for item in json.loads(args.corpus.read_text())["items"]]
@@ -74,6 +82,18 @@ def main() -> None:
             record = json.loads(line)
             if not record["marked"] and (args.samples_dir / record["file"]).exists():
                 paths.append(str(args.samples_dir / record["file"]))
+    if not paths and args.samples_dir:
+        # Marked-only run: score the plain samples of a sibling run at the
+        # same top-p with this run's descriptor settings.
+        top_p = detector_settings(args.samples_dir)["top_p"]
+        for sibling in sorted(args.samples_dir.parent.iterdir()):
+            if sibling.is_dir() and sibling != args.samples_dir and (sibling / "samples.jsonl").exists() and detector_settings(sibling)["top_p"] == top_p:
+                for line in (sibling / "samples.jsonl").read_text().splitlines():
+                    record = json.loads(line) if line.strip() else None
+                    if record and not record["marked"] and (sibling / record["file"]).exists():
+                        paths.append(str(sibling / record["file"]))
+                if paths:
+                    break
     if not paths:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps({"documents": 0, "tests": 0, "note": "no plain samples in this run"}, indent=1) + "\n")
@@ -82,15 +102,16 @@ def main() -> None:
     # Consistency check: the fast re-scorer must equal the shipped detector.
     for path in paths[:5]:
         key = hashlib.sha256(b"consistency").digest()
-        fast = score(document_descriptors(Path(path).read_bytes(), GeoParameters()), key)
-        slow = detect(Path(path).read_bytes(), key)["log10_p_value"]
+        fast = score(document_descriptors(Path(path).read_bytes(), GeoParameters(**settings)), key)
+        slow = detect(Path(path).read_bytes(), key, GeoParameters(**settings))["log10_p_value"]
         assert abs(fast - slow) < 1e-9, (path, fast, slow)
     with mp.get_context("spawn").Pool(args.workers) as pool:
-        results = pool.map(run, [(path, args.keys) for path in paths], chunksize=4)
+        results = pool.map(run, [(path, args.keys, settings) for path in paths], chunksize=4)
     values = np.array([v for _, doc, _ in results for v in doc])
     distinct = [d for _, doc, d in results if doc]
     report = {
         "documents": len(paths),
+        "parameters": settings,
         "documents_with_vertices": len(distinct),
         "distinct_vertices_median": float(np.median(distinct)) if distinct else 0.0,
         "keys_per_document": args.keys,
